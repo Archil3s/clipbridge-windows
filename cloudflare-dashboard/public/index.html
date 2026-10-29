@@ -47,6 +47,7 @@
         <div class="topbar-title"><span class="topbar-context">ClipBridge</span><span aria-hidden="true">/</span><strong>Monitor</strong></div>
         <div class="topbar-actions">
           <span id="lastSync" class="sync-time">No update received</span>
+          <button class="button button-quiet" id="refreshBtn" type="button" disabled aria-label="Refresh processing status" title="Connect to refresh status">Refresh</button>
           <button class="button button-outline" id="connectBtn" type="button">Connect dashboard</button>
         </div>
       </header>
@@ -58,7 +59,7 @@
             <h1>Video processing</h1>
             <p class="page-description">Track a job from your phone while ClipBridge works on your Windows PC.</p>
           </div>
-          <a class="documentation-link" href="#connection">How to connect</a>
+          <a class="documentation-link" href="#setupGuide">Set up monitoring</a>
         </div>
 
         <section id="statePanel" class="state-panel" aria-labelledby="stateTitle" data-state="offline">
@@ -115,15 +116,45 @@
             </div>
             <p class="connection-intro">Your browser reads status from Cloudflare. ClipBridge processes the video locally.</p>
             <dl class="connection-facts">
+              <div><dt>Worker API</dt><dd id="workerConnection">Not checked</dd></div>
               <div><dt>Desktop</dt><dd id="desktopConnection">Not reporting</dd></div>
               <div><dt>Dashboard access</dt><dd id="accessStatus">Not authenticated</dd></div>
-              <div><dt>Refresh interval</dt><dd>5 seconds</dd></div>
+              <div><dt>When connected</dt><dd>Checks every 5 seconds</dd></div>
               <div><dt>Video transfer</dt><dd>None</dd></div>
             </dl>
-            <button id="setupBtn" class="button button-primary" type="button">Connection settings</button>
-            <p class="quiet-note">Only the latest job's status, filename, clip count and file size are transmitted when monitoring is enabled.</p>
+            <div class="connection-actions">
+              <button id="setupBtn" class="button button-primary" type="button">Enter viewer token</button>
+              <button id="checkWorkerBtn" class="button button-quiet" type="button">Check Worker API</button>
+            </div>
+            <p id="workerCheckNote" class="worker-check-note" role="status" aria-live="polite">The Worker API check does not require your private token.</p>
+            <p class="quiet-note">Monitoring sends only job metadata, never video files. The Viewer token stays in this browser tab.</p>
           </section>
         </div>
+
+        <section class="setup-guide" id="setupGuide" aria-labelledby="setupHeading">
+          <div class="setup-heading">
+            <div>
+              <p class="section-label">FIRST-TIME CONNECTION</p>
+              <h2 id="setupHeading">Get live updates on your phone</h2>
+            </div>
+            <span class="setup-hint">3 setup steps</span>
+          </div>
+          <ol class="setup-steps">
+            <li>
+              <span class="step-index" aria-hidden="true">01</span>
+              <div><strong>Deploy the ClipBridge Worker</strong><p>Use the <code>cloudflare-dashboard</code> root folder for the separate <code>clipbridge-windows</code> Worker. This does not change your garden website.</p></div>
+            </li>
+            <li>
+              <span class="step-index" aria-hidden="true">02</span>
+              <div><strong>Set up private status storage</strong><p>Bind a Workers KV namespace as <code>STATUS_STORE</code>, then create separate <code>VIEW_TOKEN</code> and <code>INGEST_TOKEN</code> secrets in Cloudflare.</p></div>
+            </li>
+            <li>
+              <span class="step-index" aria-hidden="true">03</span>
+              <div><strong>Connect the PC and this browser</strong><p>Enable Cloudflare monitoring in ClipBridge Windows using <code>INGEST_TOKEN</code>. On this page select <strong>Connect dashboard</strong> and enter <code>VIEW_TOKEN</code>.</p></div>
+            </li>
+          </ol>
+          <a class="setup-doc-link" href="https://github.com/Archil3s/clipbridge-windows/tree/main/cloudflare-dashboard" target="_blank" rel="noopener noreferrer">Full configuration guide</a>
+        </section>
 
         <section class="activity-section" id="activity" aria-labelledby="activityHeading">
           <div class="activity-heading">
@@ -143,7 +174,7 @@
         </section>
 
         <footer>
-          <span>ClipBridge monitor · Dashboard v0.2</span>
+          <span>ClipBridge monitor · Dashboard v0.3</span>
           <span>Read-only status, no remote video transfer</span>
         </footer>
       </main>
@@ -159,8 +190,8 @@
       <p id="dialogDescription">Enter the private <code>VIEW_TOKEN</code> configured in your Cloudflare Worker. This is not your Cloudflare account API token.</p>
       <form id="connectForm">
         <label for="viewerToken">Viewer token</label>
-        <input id="viewerToken" type="password" autocomplete="off" spellcheck="false" required minlength="32" placeholder="At least 32 characters">
-        <p class="field-help">Held in this browser tab's memory only. You'll enter it again after reloading.</p>
+        <input id="viewerToken" type="password" autocomplete="off" spellcheck="false" required minlength="32" aria-describedby="tokenHint dialogError" placeholder="At least 32 characters">
+        <p class="field-help" id="tokenHint">Held in this browser tab's memory only. You'll enter it again after reloading.</p>
         <p id="dialogError" class="dialog-error" role="alert" hidden></p>
         <div class="dialog-actions">
           <button id="disconnectBtn" class="button button-outline" type="button">Disconnect</button>

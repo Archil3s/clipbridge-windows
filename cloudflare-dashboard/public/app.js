@@ -35,6 +35,16 @@
     return map[value] || "Unknown";
   }
 
+  function updateControls() {
+    const canRefresh = Boolean(state.token) && !state.demo && !state.polling;
+    byId("refreshBtn").disabled = !canRefresh;
+    byId("refreshBtn").title = canRefresh
+      ? "Request the latest processing status"
+      : "Connect a viewer token to refresh";
+    setText("connectBtn", state.connected ? "Connection settings" : "Connect dashboard");
+    byId("setupGuide").hidden = Boolean(state.connected && state.latest?.online && !state.demo && byId("statePanel").dataset.state === "online");
+  }
+
   function topState(kind, title, description) {
     byId("statePanel").dataset.state = kind;
     byId("stateLight").dataset.state = kind;
@@ -110,6 +120,7 @@
     setText("lastSync", "No update received");
     clearJob();
     byId("retryBtn").hidden = true;
+    updateControls();
   }
 
   function renderNoJob() {
@@ -121,6 +132,7 @@
     byId("retryBtn").hidden = true;
     clearJob();
     setText("activityDescription", "Start a video job on your PC with Cloudflare monitoring enabled.");
+    updateControls();
   }
 
   function renderPayload(data) {
@@ -143,6 +155,7 @@
     setText("lastSync", "Last report " + updated);
     byId("retryBtn").hidden = true;
     setJob(data.job, { online });
+    updateControls();
   }
 
   function renderError(description) {
@@ -151,8 +164,19 @@
     setText("desktopConnection", "Connection error");
     setText("lastSync", "Status unavailable");
     byId("retryBtn").hidden = false;
+    setText("accessStatus", "Last access check unavailable");
     if (!state.latest) clearJob();
     else if (state.latest.job) setJob(state.latest.job, { online: false });
+    updateControls();
+  }
+
+  function renderLoading() {
+    topState("loading", "Checking desktop", "Requesting the latest status from Cloudflare.");
+    setText("desktopConnection", "Checking");
+    setText("railStatus", "Checking status");
+    byId("retryBtn").hidden = true;
+    if (state.latest?.job) setJob(state.latest.job, { online: false });
+    else clearJob();
   }
 
   function showDemo() {
@@ -174,6 +198,7 @@
       fileSizeGb: 15,
       updatedAt: new Date().toISOString()
     }, { demo: true, online: false });
+    updateControls();
   }
 
   async function fetchStatus(token) {
@@ -203,13 +228,18 @@
     }
   }
 
-  async function refresh() {
+  async function refresh({ showLoading = false } = {}) {
     if (!state.token || state.demo || state.polling) return;
     state.polling = true;
+    if (showLoading) renderLoading();
+    updateControls();
     const currentToken = state.token;
     const result = await fetchStatus(currentToken);
     state.polling = false;
-    if (state.demo || currentToken !== state.token) return;
+    if (state.demo || currentToken !== state.token) {
+      updateControls();
+      return;
+    }
     if (result.ok) {
       renderPayload(result.data);
     } else if (result.unauthorized) {
@@ -219,6 +249,37 @@
       renderDisconnected(result.reason);
     } else {
       renderError(result.reason);
+    }
+    updateControls();
+  }
+
+  async function checkWorker() {
+    const btn = byId("checkWorkerBtn");
+    btn.disabled = true;
+    setText("checkWorkerBtn", "Checking…");
+    setText("workerConnection", "Checking");
+    const note = byId("workerCheckNote");
+    note.dataset.state = "";
+    setText("workerCheckNote", "Contacting the ClipBridge Worker API.");
+    try {
+      const response = await fetch("/api/health", {
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!response.ok) throw Error("HTTP " + response.status);
+      const result = await response.json();
+      if (result?.service !== "clipbridge-dashboard" || result?.ok !== true)
+        throw Error("Unexpected API response");
+      setText("workerConnection", "Available");
+      note.dataset.state = "ok";
+      setText("workerCheckNote", "Worker API is responding. This does not verify KV, viewer access or your PC.");
+    } catch {
+      setText("workerConnection", "Unavailable");
+      note.dataset.state = "error";
+      setText("workerCheckNote", "Worker API unavailable. Check the Cloudflare deployment and use cloudflare-dashboard as its root directory.");
+    } finally {
+      btn.disabled = false;
+      setText("checkWorkerBtn", "Check Worker API");
     }
   }
 
@@ -267,7 +328,9 @@
   byId("setupBtn").addEventListener("click", openDialog);
   byId("dialogCloseBtn").addEventListener("click", closeDialog);
   byId("connectForm").addEventListener("submit", connect);
-  byId("retryBtn").addEventListener("click", refresh);
+  byId("retryBtn").addEventListener("click", () => refresh({ showLoading: true }));
+  byId("refreshBtn").addEventListener("click", () => refresh({ showLoading: true }));
+  byId("checkWorkerBtn").addEventListener("click", checkWorker);
   byId("previewBtn").addEventListener("click", () => {
     if (!state.demo) {
       showDemo();
@@ -277,9 +340,7 @@
     byId("previewBtn").setAttribute("aria-pressed", "false");
     setText("previewBtn", "View sample");
     if (state.token) {
-      if (state.latest) renderPayload(state.latest);
-      else renderNoJob();
-      refresh();
+      refresh({ showLoading: true });
     } else renderDisconnected();
   });
   byId("disconnectBtn").addEventListener("click", () => {

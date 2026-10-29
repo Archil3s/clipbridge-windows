@@ -110,3 +110,62 @@ test("automated accessibility audit covers idle, sample, and connection settings
     })))}`).toEqual([]);
   }
 });
+
+test("Worker diagnostics distinguish website availability from desktop pairing", async ({ page }) => {
+  await page.route("**/api/health", route => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ service: "clipbridge-dashboard", ok: true, mode: "separate-project" })
+  }));
+  await page.goto("/");
+  await expect(page.locator("#setupGuide")).toBeVisible();
+  await expect(page.locator("#refreshBtn")).toBeDisabled();
+  await page.getByRole("button", { name: "Check Worker API" }).click();
+  await expect(page.locator("#workerConnection")).toHaveText("Available");
+  await expect(page.locator("#workerCheckNote")).toContainText("does not verify KV");
+  await expect(page.locator("#stateTitle")).toHaveText("Not connected");
+  await expect(page.locator("#desktopConnection")).toHaveText("Not reporting");
+});
+
+test("Worker diagnostics explain a missing deployment rather than promising a connection", async ({ page }) => {
+  await page.route("**/api/health", route => route.fulfill({
+    status: 404, contentType: "text/html", body: "<p>Not Found</p>"
+  }));
+  await page.goto("/");
+  await page.getByRole("button", { name: "Check Worker API" }).click();
+  await expect(page.locator("#workerConnection")).toHaveText("Unavailable");
+  await expect(page.locator("#workerCheckNote")).toContainText("cloudflare-dashboard");
+  await expect(page.locator("#stateTitle")).toHaveText("Not connected");
+});
+
+test("live dashboard hides setup steps and manual refresh requests fresh state", async ({ page }) => {
+  let progress = 20;
+  let requests = 0;
+  await page.route("**/api/status", route => {
+    requests += 1;
+    return route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({
+        online: true, configured: true,
+        job: {
+          fileName: "real_video.mp4", jobId: "real",
+          status: "processing", progress,
+          clipsDone: 2, clipsTotal: 9, fileSizeGb: 1.2,
+          updatedAt: new Date().toISOString()
+        }
+      })
+    });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Connect dashboard" }).first().click();
+  await page.locator("#viewerToken").fill("sample-correct-viewer-token-0123456789");
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
+  await expect(page.locator("#connectDialog")).toBeHidden();
+  await expect(page.locator("#setupGuide")).toBeHidden();
+  await expect(page.locator("#refreshBtn")).toBeEnabled();
+  await expect(page.locator("#progressText")).toHaveText("20%");
+  progress = 60;
+  await page.locator("#refreshBtn").click();
+  await expect(page.locator("#progressText")).toHaveText("60%");
+  expect(requests).toBeGreaterThanOrEqual(2);
+  await expect(page.locator("#desktopConnection")).toHaveText("Reporting");
+});
