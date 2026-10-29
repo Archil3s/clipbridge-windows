@@ -116,7 +116,7 @@ public sealed class VideoSplitter
                 outputPattern
             ], duration, compress ? 60 : 0, 100,
                attempt == 0 ? "Splitting" : $"Retrying smaller splits ({attempt + 1}/6)",
-               progress, cancellationToken);
+               progress, cancellationToken, outputDirectory, estimatedTotal);
 
             FileInfo[] segments = new DirectoryInfo(outputDirectory).GetFiles("part_*.mp4")
                 .OrderBy(x => x.Name, StringComparer.Ordinal).ToArray();
@@ -169,7 +169,7 @@ public sealed class VideoSplitter
     private static async Task RunFfmpegWithProgressAsync(
         string exe, IReadOnlyList<string> arguments, double duration,
         double start, double end, string phase, IProgress<VideoProgress>? progress,
-        CancellationToken ct)
+        CancellationToken ct, string? segmentDirectory = null, int estimatedClips = 0)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -195,7 +195,11 @@ public sealed class VideoSplitter
             if (!TimeSpan.TryParse(line["out_time=".Length..],
                 CultureInfo.InvariantCulture, out TimeSpan time)) continue;
             double fraction = Math.Clamp(time.TotalSeconds / duration, 0, 1);
-            progress?.Report(new VideoProgress(start + fraction * (end - start), phase));
+            int finishedClips = segmentDirectory is not null && Directory.Exists(segmentDirectory)
+                ? Math.Max(0, Directory.EnumerateFiles(segmentDirectory, "part_*.mp4").Count() - 1)
+                : 0;
+            progress?.Report(new VideoProgress(start + fraction * (end - start), phase,
+                finishedClips, estimatedClips));
         }
         await process.WaitForExitAsync(ct);
         string stderr = await errors;
