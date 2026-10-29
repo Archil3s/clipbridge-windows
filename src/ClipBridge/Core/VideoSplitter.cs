@@ -41,7 +41,7 @@ public sealed class VideoSplitter
         string outputDirectory = Path.Combine(outputRoot,
             $"{safeName}_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N")[..6]}");
         Directory.CreateDirectory(outputDirectory);
-        (double originalDuration, _) = await ProbeAsync(inputPath, cancellationToken);
+        var (originalDuration, _) = await ProbeAsync(inputPath, cancellationToken);
         if (originalDuration <= 0 || !double.IsFinite(originalDuration))
             throw new InvalidOperationException("FFprobe could not determine the video duration.");
         progress?.Report(new VideoProgress(0, "Preparing video"));
