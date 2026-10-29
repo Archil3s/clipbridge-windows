@@ -88,18 +88,18 @@
     setText("jobState", "Waiting");
     setText("jobName", "No video reported");
     setText("jobHint", "Your latest video will appear here when the Windows app sends an update.");
-    setText("progressText", "—");
+    setText("progressText", "Not reported");
     byId("progressFill").style.width = "0%";
     byId("progressTrack").setAttribute("aria-valuenow", "0");
     byId("progressTrack").setAttribute("aria-valuetext", "No job reported");
     setText("progressFoot", "No progress to display");
     setText("lastUpdate", "No update yet");
     setText("jobStatusFact", "Waiting for data");
-    setText("jobClipsFact", "—");
-    setText("jobSizeFact", "—");
+    setText("jobClipsFact", "Not reported");
+    setText("jobSizeFact", "Not reported");
     setText("activityTitle", "No updates received");
     setText("activityDescription", "Connect to view the last job status reported by ClipBridge.");
-    setText("activityTime", "—");
+    setText("activityTime", "Not reported");
   }
 
   function renderDisconnected(description = "Connect with your viewer token to read processing status.") {
