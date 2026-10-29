@@ -2,6 +2,14 @@
 
 This is an **independent ClipBridge dashboard webpage** deployed to the existing fresh Cloudflare Worker project `clipbridge-windows` under the user's Cloudflare account. It does not modify or reuse the existing garden website, Worker, or routes.
 
+## Dashboard usability v0.3
+
+The dashboard now provides a first-time setup checklist instead of making visitors guess how to connect Cloudflare to the Windows app. Use **Check Worker API** to verify that the dashboard Worker is responding before entering any secret. This check calls `GET /api/health` without credentials. It **does not** verify `STATUS_STORE`, either secret, or the PC connection.
+
+Once `VIEW_TOKEN` is authenticated, use **Refresh** to request the latest status immediately; the automatic 5-second polling continues. Loading, failed, and stale states do not claim that the desktop is online. The checklist remains visible until a fresh Worker response confirms the Windows client is reporting.
+
+The dashboard **does not configure your Cloudflare account**. Create KV binding `STATUS_STORE` and separate `INGEST_TOKEN`/`VIEW_TOKEN` secrets in your Cloudflare Worker settings. Keep each token private.
+
 ## Dashboard design v0.2
 
 The Cloudflare webpage now prioritises the current video, accurate connection state and the latest status message. It includes a clearly labelled sample preview, readable phone layout, accessible dialog and explicit error states. See [design review](DESIGN_REVIEW.md).
