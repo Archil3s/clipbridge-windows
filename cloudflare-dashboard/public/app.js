@@ -42,7 +42,7 @@
       ? "Request the latest processing status"
       : "Connect a viewer token to refresh";
     setText("connectBtn", state.connected ? "Connection settings" : "Connect dashboard");
-    byId("setupGuide").hidden = Boolean(state.connected && state.latest?.online && !state.demo);
+    byId("setupGuide").hidden = Boolean(state.connected && state.latest?.online && !state.demo && byId("statePanel").dataset.state === "online");
   }
 
   function topState(kind, title, description) {
