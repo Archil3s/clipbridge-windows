@@ -4,6 +4,13 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Fixed
+- Fixed Brave's `--no-sandbox` warning and Google sign-in rejection triggered by ClipBridge launching a Playwright-controlled Brave session.
+- **Open ChatGPT in Brave** now launches the normal browser through Windows without Playwright, sandbox-disabling flags or a separate automation profile.
+- Removed Playwright and experimental automated attachment code from the Windows app, replacing the attachment button with a truthful **Show next 3 clips (manual)** workflow that opens files for user-initiated ChatGPT upload.
+- Former managed Brave profile data is left untouched but is no longer accessed. Cloudflare monitoring, B-roll cutting, and gardening tags remain unchanged.
+
+
 ### Changed
 - Switched managed ChatGPT sign-in and experimental attachment attempts from Edge to **Brave Browser**.
 - Brave is found in standard Windows per-user/Program Files installations or registered App Paths; custom installations can set `CLIPBRIDGE_BRAVE_PATH`. Missing Brave fails clearly instead of silently using Edge.
