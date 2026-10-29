@@ -44,13 +44,25 @@ jobs:
           node tests/brave-extension/composer-browser.cjs
           if ($LASTEXITCODE -ne 0) { throw "Composer regression tests failed" }
           node tests/brave-extension/browser-transport.cjs
+      - name: Install Playwright .NET test browser
+        run: pwsh tests/ClipBridge.Core.Tests/bin/Release/net10.0-windows/playwright.ps1 install chromium
+      - name: Test automatic Playwright upload queue and browser flow
+        run: dotnet run --project tests/ClipBridge.Core.Tests -c Release -- --automation
       - name: Publish Windows desktop app
         run: dotnet publish src/ClipBridge/ClipBridge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o publish -warnaserror
+      - name: Verify bundled Playwright driver
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'publish/Microsoft.Playwright.dll')) { throw "Playwright assembly missing" }
+          if (!(Test-Path 'publish/.playwright/package/cli.js')) { throw "Playwright driver missing" }
+          & 'publish/.playwright/node/win32_x64/node.exe' --version
+          if ($LASTEXITCODE -ne 0) { throw "Bundled Playwright Node runtime failed" }
       - name: Upload portable Windows build
         uses: actions/upload-artifact@v4
         with:
           name: ClipBridge-win-x64-portable
           path: publish/**
+          include-hidden-files: true
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup -y --no-progress

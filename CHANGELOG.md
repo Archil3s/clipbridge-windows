@@ -4,6 +4,13 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.0 Playwright uploads
+- Add a dedicated automatic upload window with a saved prepared-clip queue, folder import, conversation link, batch size, per-batch message and Stop control.
+- Attach prepared files directly from disk through Microsoft.Playwright 1.64.1. Automatically wait for visible upload readiness, send once, confirm the new user message and wait for the response before continuing.
+- Use the installed Brave browser with a separate saved profile and loopback CDP connection. Keep the sandbox enabled and sign-in user-controlled. The extension is optional and its bridge is stopped when the Playwright window opens.
+- Persist attachment/send reservations before browser actions, preserve uncertain attempts after interruption, and provide explicit reviewed retries. Continue from a new-chat URL only after the first sent message is confirmed.
+- Add saved-queue and real Playwright/CDP regression tests using synthetic files/pages. Bundle the Playwright driver in the Windows installer.
+
 ### Extension 0.3.1
 - Fix composer detection when the first editor is hidden or the visible message box uses a rich editor without a form. Recognize the composer submit button ID and keep sibling attachment chips within the detected container.
 - Wait up to 30 seconds for a visible composer before claiming clips. Reject ambiguous editors and fields inside conversation messages or dialogs.
@@ -17,6 +24,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.0] - 2026-10-30 (preview)
+
+Adds the Playwright uploader described above: direct multi-file attachment, automatic Send, a saved queue and a separate Brave profile with user-controlled sign-in. This is an experimental website integration; live ChatGPT acceptance remains unverified.
 
 ## [0.5.0] - 2026-10-29 (preview)
 

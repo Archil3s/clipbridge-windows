@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private readonly JobJournal _journal = new();
     private CloudflareStatusReporter? _cloudflareReporter;
     private BraveUploadBridge? _braveUploadBridge;
+    private AutomaticUploadWindow? _automaticUploadWindow;
 
     public MainWindow()
     {
@@ -268,7 +269,7 @@ public partial class MainWindow : Window
                     throw;
                 }
             }
-            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open normal Brave and arm the batch extension, or choose clips for manual attachment.";
+            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. Open Automatic uploads (Playwright) to upload and send the prepared queue.";
         }
         catch (OperationCanceledException)
         {
@@ -293,6 +294,7 @@ public partial class MainWindow : Window
         BRollButton.IsEnabled = !busy;
         AddVideosButton.IsEnabled = !busy;
         AddPreparedButton.IsEnabled = !busy;
+        AutomaticUploadButton.IsEnabled = !busy;
         ClearButton.IsEnabled = !busy;
         TargetSizeBox.IsEnabled = !busy;
         ModeBox.IsEnabled = !busy;
@@ -314,6 +316,31 @@ public partial class MainWindow : Window
     {
         var window = new BRollWindow { Owner = this };
         window.Show();
+    }
+
+    private async void AutomaticUploadButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_automaticUploadWindow is not null) { _automaticUploadWindow.Activate(); return; }
+        try
+        {
+            var bridge = _braveUploadBridge;
+            _braveUploadBridge = null;
+            AutoAttachEnabledBox.IsChecked = false;
+            if (bridge is not null) await bridge.DisposeAsync();
+            _automaticUploadWindow = new AutomaticUploadWindow(_uploadQueue) { Owner = this };
+            AutoAttachEnabledBox.IsEnabled = false;
+            _automaticUploadWindow.Closed += (_, _) =>
+            {
+                _automaticUploadWindow = null;
+                AutoAttachEnabledBox.IsEnabled = true;
+            };
+            _automaticUploadWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            AutoAttachEnabledBox.IsEnabled = true;
+            MessageBox.Show(this, ex.Message, "Automatic uploads", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void OpenOutputButton_Click(object sender, RoutedEventArgs e)
@@ -374,7 +401,7 @@ public partial class MainWindow : Window
         AttachButton.IsEnabled = _uploadQueue.Count > 0;
         StatusLabel.Text = $"Added {added} prepared clip(s) without processing; {_uploadQueue.Count} in attachment queue. " +
             (rejected > 0 ? $"Skipped {rejected} unsupported, unreadable, missing, empty or over-525-MB files. " : "") +
-            "Arm the Brave extension to upload batches. Previously reserved clips will not be repeated automatically.";
+            "Open Automatic uploads (Playwright) to upload and send these clips, or arm the optional extension.";
     }
 
     private void AttachButton_Click(object sender, RoutedEventArgs e)

@@ -1,0 +1,46 @@
+<Window x:Class="ClipBridge.AutomaticUploadWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ClipBridge - Automatic ChatGPT uploads" Width="940" Height="780"
+        MinWidth="760" MinHeight="620" Background="{StaticResource WindowBackground}"
+        Foreground="White" FontFamily="Segoe UI" Closing="Window_Closing">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="24">
+            <TextBlock Text="Automatic ChatGPT uploads" FontSize="26" FontWeight="Bold" />
+            <TextBlock Text="Choose your prepared clips, sign in once, then start. Playwright attaches each batch, waits for uploads, sends the message and continues."
+                       Foreground="#C4D7CD" TextWrapping="Wrap" Margin="0,8,0,18" />
+            <StackPanel x:Name="SettingsPanel">
+                <WrapPanel Margin="0,0,0,12">
+                    <Button Content="Choose clip folder" Click="Folder_Click" />
+                    <Button Content="Add clips" Click="Add_Click" />
+                    <Button Content="Remove selected" Click="Remove_Click" />
+                    <Button Content="Retry reviewed clips" Click="Retry_Click" />
+                </WrapPanel>
+                <ListBox x:Name="ClipsList" Height="185" SelectionMode="Extended"
+                         DisplayMemberPath="Display" Background="#0F172A" Foreground="White"
+                         BorderBrush="#475569" Padding="8" AutomationProperties.Name="Saved automatic upload queue" />
+                <TextBlock x:Name="QueueLabel" Foreground="#C4D7CD" Margin="0,7,0,14" TextWrapping="Wrap" />
+                <Label Content="ChatGPT conversation link (leave the home link to start a new chat)" Target="{Binding ElementName=UrlBox}" Foreground="White" />
+                <TextBox x:Name="UrlBox" AutomationProperties.Name="ChatGPT conversation link" />
+                <DockPanel Margin="0,12,0,10">
+                    <Label Content="Clips per message" Target="{Binding ElementName=BatchBox}" Foreground="White" VerticalAlignment="Center" />
+                    <TextBox x:Name="BatchBox" Width="65" HorizontalAlignment="Left" Text="3" AutomationProperties.Name="Clips per message" />
+                    <TextBlock Text="1 to 10; up to 1 GB total per batch. Website limits may be lower." Foreground="#C4D7CD" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0" />
+                </DockPanel>
+                <Label Content="Message sent with each batch" Target="{Binding ElementName=PromptBox}" Foreground="White" />
+                <TextBox x:Name="PromptBox" Height="70" AcceptsReturn="True" TextWrapping="Wrap" MaxLength="1000" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Batch message" />
+                <TextBlock Text="The automation uses a separate saved Brave profile. Sign in yourself in that window. Keep your usual Brave windows open; the extension is not needed for this workflow."
+                           Foreground="#C4D7CD" TextWrapping="Wrap" FontSize="12" Margin="0,10,0,12" />
+            </StackPanel>
+            <WrapPanel Margin="0,4,0,12">
+                <Button x:Name="OpenButton" Content="Open automation browser / sign in" Click="Open_Click" />
+                <Button x:Name="StartUploadButton" Content="Start automatic uploads + Send" Click="Start_Click" Background="#0369A1" />
+                <Button x:Name="StopButton" Content="Stop" Click="Stop_Click" IsEnabled="False" />
+            </WrapPanel>
+            <TextBlock x:Name="UploadStatus" Text="Ready. Choose a folder of prepared clips. Your queue and settings are saved on this PC."
+                       Foreground="#7DD3FC" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock Text="Starting authorizes automatic uploads and messages in the conversation above. Stop prevents further actions; an upload or message already submitted cannot be recalled. Uncertain attempts stay paused for review."
+                       Foreground="#C4D7CD" TextWrapping="Wrap" FontSize="11" Margin="0,12,0,0" />
+        </StackPanel>
+    </ScrollViewer>
+</Window>

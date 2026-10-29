@@ -40,6 +40,8 @@ Use GitHub Secrets only for authorised deployment credentials. Cloudflare Worker
 
 The Windows workflow runs `dotnet run --project tests/ClipBridge.Core.Tests -c Release` and `node --test tests/brave-extension/*.test.cjs`. These are executable regression checks without additional test packages. A non-zero result fails CI. Inspect the installer and `ClipBridge-Brave-Extension` artifacts from the same run; the extension must include `background.js` and `composer.js`. Main-branch builds publish preview Actions artifacts without creating a stable tag.
 
+Windows 0.6.0 also runs `--automation` against Playwright's isolated test Chromium, including a loopback CDP connection. Publish must include `Microsoft.Playwright.dll` and the `.playwright` driver directory (including its Windows Node executable); the installer recursively includes them. Users supply their installed Brave browser and sign in themselves in the separate automation profile. The browser download in CI is only for tests.
+
 Before claiming real upload support, perform the small-video checklist in `brave-extension/README.md` using normal Brave. Record separately whether Google sign-in, DOM dispatch, and ChatGPT upload acceptance were observed.
 
 For Windows 0.5.0 / extension 0.3.0, test manual multi-file dispatch before enabling optional auto-send. Verify that upload progress, disabled Send, missing filenames, alerts, user edits and navigation prevent sending. Never describe synthetic browser results as live ChatGPT acceptance. Existing per-file bridge endpoints remain for backward compatibility; the new extension requires the batch-capable desktop build.
