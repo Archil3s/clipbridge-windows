@@ -4,6 +4,13 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Changed
+- Switched managed ChatGPT sign-in and experimental attachment attempts from Edge to **Brave Browser**.
+- Brave is found in standard Windows per-user/Program Files installations or registered App Paths; custom installations can set `CLIPBRIDGE_BRAVE_PATH`. Missing Brave fails clearly instead of silently using Edge.
+- Managed ChatGPT sessions use an isolated `%LOCALAPPDATA%\ClipBridge\ChatGptBraveProfile` without changing the existing Brave or Edge profiles; the manual ChatGPT shortcut also opens Brave.
+- Updated the desktop button, status/errors and documentation. Browser-assisted uploads remain experimental and require user verification and manual sending.
+
+
 ### Added
 - Windows B-roll cutter for selecting source footage, previewing it, marking In/Out times, exporting exact-range H.264/AAC MP4 excerpts, and saving clips into a reusable local library.
 - Separate gardening-topic checkboxes for tagging new clips and filtering saved library clips (multiple selected topics match any); tags persist in adjacent local JSON files.
