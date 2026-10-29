@@ -2,6 +2,14 @@
 
 This is an **independent ClipBridge dashboard webpage** deployed to the existing fresh Cloudflare Worker project `clipbridge-windows` under the user's Cloudflare account. It does not modify or reuse the existing garden website, Worker, or routes.
 
+## Dashboard v0.4 premium visual redesign
+
+The website uses a compact header, a prominent processing ring, and improved mobile hierarchy. It retains existing `/api/status` and `/api/health` routes, authenticated viewer-token connection, manual refresh, sample preview, and onboarding workflow.
+
+**Do not interpret the sample preview as real progress.** When no job is reported, the ring shows a dash, not a fabricated percentage. No source videos are uploaded by this redesign. The production Worker must still be configured with a Workers KV binding and private secrets; GitHub deployments do not create them automatically.
+
+The visual changes are confined to `public/index.html`, `public/styles.css`, and `public/app.js`. A PR runs responsive, authenticated-state, and automated accessibility tests, but passing them does not guarantee a deployment to Cloudflare or live PC telemetry.
+
 ## Dashboard usability v0.3
 
 The dashboard now provides a first-time setup checklist instead of making visitors guess how to connect Cloudflare to the Windows app. Use **Check Worker API** to verify that the dashboard Worker is responding before entering any secret. This check calls `GET /api/health` without credentials. It **does not** verify `STATUS_STORE`, either secret, or the PC connection.
