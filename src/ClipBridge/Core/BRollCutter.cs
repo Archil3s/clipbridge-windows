@@ -77,8 +77,9 @@ public sealed class BRollCutter
         Directory.CreateDirectory(destinationFolder);
         string stamp = start.ToString(@"hh\mm\ss", CultureInfo.InvariantCulture) +
             "-" + end.ToString(@"hh\mm\ss", CultureInfo.InvariantCulture);
-        string name = $"{safeTitle}_{sourceName}_{stamp}_{Guid.NewGuid():N}"[..Math.Min(
-            150, ($"{safeTitle}_{sourceName}_{stamp}_{Guid.NewGuid():N}").Length)];
+        string label = $"{safeTitle}_{sourceName}_{stamp}";
+        if (label.Length > 105) label = label[..105].TrimEnd(' ', '_');
+        string name = label + "_" + Guid.NewGuid().ToString("N")[..8];
         string destination = Path.Combine(destinationFolder, name + ".mp4");
         string temporary = Path.Combine(destinationFolder, name + ".partial.mp4");
 
