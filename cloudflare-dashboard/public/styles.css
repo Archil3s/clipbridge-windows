@@ -383,6 +383,12 @@ code { font-size: .92em; color: var(--mint); overflow-wrap: anywhere; }
   .dialog-inner { padding: 20px; }
   .dialog-top h2 { font-size: 21px; }
 }
+@media (max-width: 380px) {
+  .topbar { flex-wrap: wrap; align-items: center; row-gap: 8px; }
+  .topbar-title { flex: 1 1 100%; }
+  .topbar-actions { width: 100%; justify-content: space-between; }
+  .topbar-actions .button { flex: 1 1 auto; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0s !important; animation-duration: 0s !important; }
 }
