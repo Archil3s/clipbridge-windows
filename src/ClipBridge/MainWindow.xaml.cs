@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private int _uploadPosition;
     private readonly JobJournal _journal = new();
     private CloudflareStatusReporter? _cloudflareReporter;
+    private BraveUploadBridge? _braveUploadBridge;
 
     public MainWindow()
     {
@@ -144,6 +145,7 @@ public partial class MainWindow : Window
         _uploadQueue.Clear();
         _uploadPosition = 0;
         AttachButton.IsEnabled = false;
+        _braveUploadBridge?.Clear();
         bool compress = ModeBox.SelectedIndex > 0;
         int crf = ModeBox.SelectedIndex switch { 1 => 24, 2 => 28, 3 => 32, _ => 28 };
         string[] files = _videos.ToArray();
@@ -218,9 +220,14 @@ public partial class MainWindow : Window
                         _journal.SetState(file, targetMb, compress, crf, result.OutputDirectory, "completed");
                     }
 
-                    _uploadQueue.AddRange(Directory.EnumerateFiles(result.OutputDirectory, "part_*.*")
+                    string[] preparedClips = Directory.EnumerateFiles(result.OutputDirectory, "part_*.*")
                         .Where(path => SupportedExtensions.Contains(Path.GetExtension(path)))
-                        .OrderBy(path => path, StringComparer.Ordinal));
+                        .OrderBy(path => path, StringComparer.Ordinal)
+                        .ToArray();
+                    _uploadQueue.AddRange(preparedClips);
+                    _braveUploadBridge?.AddFiles(preparedClips);
+                    if (_braveUploadBridge is not null)
+                        BraveBridgeStatusLabel.Text = _braveUploadBridge.Status;
                     AttachButton.IsEnabled = _uploadQueue.Count > 0;
                     completed++;
                     Progress.Value = completed * 100.0 / files.Length;
@@ -370,10 +377,83 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void AutoAttachEnabledBox_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_braveUploadBridge is not null) return;
+        AutoAttachEnabledBox.IsEnabled = false;
+        try
+        {
+            var bridge = new BraveUploadBridge();
+            try
+            {
+                await bridge.StartAsync();
+            }
+            catch
+            {
+                await bridge.DisposeAsync();
+                throw;
+            }
+            _braveUploadBridge = bridge;
+            bridge.AddFiles(_uploadQueue);
+            CopyBridgeKeyButton.IsEnabled = true;
+            NextBridgeBatchButton.IsEnabled = true;
+            BraveBridgeStatusLabel.Text =
+                "Bridge running on this PC only. Copy the pairing key into the extension, " +
+                "open a ChatGPT conversation in normal Brave, and click Arm this ChatGPT tab. " +
+                bridge.Status;
+        }
+        catch (Exception ex)
+        {
+            BraveBridgeStatusLabel.Text = "Could not enable Brave auto-attach: " + ex.Message;
+            MessageBox.Show(this, BraveBridgeStatusLabel.Text, "Brave extension",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            AutoAttachEnabledBox.IsChecked = false;
+        }
+        finally { AutoAttachEnabledBox.IsEnabled = true; }
+    }
+
+    private async void AutoAttachEnabledBox_Unchecked(object sender, RoutedEventArgs e)
+    {
+        var bridge = _braveUploadBridge;
+        _braveUploadBridge = null;
+        CopyBridgeKeyButton.IsEnabled = false;
+        NextBridgeBatchButton.IsEnabled = false;
+        if (bridge is not null)
+            await bridge.DisposeAsync();
+        BraveBridgeStatusLabel.Text = "Auto-attach disabled. Prepared files stay local on this PC.";
+    }
+
+    private void CopyBridgeKeyButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_braveUploadBridge is null) return;
+        Clipboard.SetText(_braveUploadBridge.PairingKey);
+        BraveBridgeStatusLabel.Text =
+            "Pairing key copied. Paste it into the ClipBridge extension popup, " +
+            "then arm your chosen ChatGPT tab. Keep the key private.";
+    }
+
+    private void NextBridgeBatchButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_braveUploadBridge is null) return;
+        try
+        {
+            _braveUploadBridge.AllowNextBatch();
+            BraveBridgeStatusLabel.Text =
+                "Next group of up to 3 clips authorised. Verify and send the previous " +
+                "ChatGPT message before starting another group.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            BraveBridgeStatusLabel.Text = ex.Message;
+        }
+    }
+
     protected override async void OnClosed(EventArgs e)
     {
         _cancellation?.Cancel();
         _setupCancellation?.Cancel();
+        if (_braveUploadBridge is not null)
+            await _braveUploadBridge.DisposeAsync();
         if (_cloudflareReporter is not null)
             await _cloudflareReporter.DisposeAsync();
         base.OnClosed(e);
