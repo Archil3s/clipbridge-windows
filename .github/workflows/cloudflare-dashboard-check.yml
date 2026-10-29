@@ -22,7 +22,6 @@ jobs:
         run: |
           node --check cloudflare-dashboard/src/index.js
           node --check cloudflare-dashboard/public/app.js
-          node -e "const c=require('./cloudflare-dashboard/wrangler.jsonc'.replace('.jsonc','.json'));" || true
           python - <<'PY'
           import json
           with open('cloudflare-dashboard/wrangler.jsonc', encoding='utf-8') as file:
