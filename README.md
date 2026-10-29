@@ -17,8 +17,15 @@ ClipBridge is a Windows-only C# / WPF desktop application that prepares large vi
 - A Windows **Inno Setup installer** and portable ZIP built by GitHub Actions.
 - **Zero manual FFmpeg setup:** on first launch, ClipBridge downloads FFmpeg and FFprobe automatically and installs them for your Windows account, then reuses them on later launches.
 - **Normal Brave browser sign-in:** opens ChatGPT in your already-installed Brave browser with no Playwright, `--no-sandbox`, or automation profile. Sign into ChatGPT directly in Brave.
-- **Manual clip-batch handoff:** **Show next 3 clips (manual)** opens your output folder, identifies the next video files, and lets you drag or select them for upload yourself. The app does not attach files or submit messages.
+- **Optional Brave auto-attach extension (experimental):** an unpacked extension lets a signed-in, explicitly armed ChatGPT tab request prepared clips from a secure localhost bridge. It tries to attach up to 3 clips automatically per authorised batch; you must confirm the attachments are accepted and send the ChatGPT message yourself. No browser automation, `--no-sandbox`, Google sign-in automation, or external clip server.
+- **Manual clip-batch fallback:** **Show next 3 clips (manual)** opens your output folder, identifies the next files, and lets you drag or select them if automatic attachment is unavailable.
 - Manual fallback: open ChatGPT and drag clips into the browser.
+
+## Experimental automatic ClipBridge attachments in Brave
+
+The optional Brave extension and locally authenticated transfer bridge can **attempt** file attachment in a normal, signed-in Brave session. Download both the Windows installer and `ClipBridge-Brave-Extension` from the **same successful build**, then follow the [extension installation and pairing guide](brave-extension/README.md).
+
+Enable the bridge in Windows, copy its pairing key into the extension, open the desired ChatGPT conversation in normal Brave, and select **Arm this ChatGPT tab**. After splitting, prepared clips are offered in groups of up to 3. **This does not prove that ChatGPT finished uploading any file**; check the actual composer and send messages manually. The extension is unpublished and must be loaded unpacked using `brave://extensions` Developer mode. The manual clip workflow remains available.
 
 ## B-roll cutter and gardening library (new preview feature)
 
