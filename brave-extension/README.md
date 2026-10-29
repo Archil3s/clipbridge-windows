@@ -1,6 +1,12 @@
-# ClipBridge Brave batch uploads (extension 0.3.0)
+# ClipBridge Brave batch uploads (extension 0.3.1)
 
-Requires ClipBridge Windows 0.5.0 or later. Install the Windows app and extension from the same successful build. This uses your normal signed-in Brave browser, with no login automation or sandbox changes.
+Requires ClipBridge Windows 0.5.0 or later. This extension update works with the installed 0.5.0 app; reinstalling Windows ClipBridge is unnecessary. This uses your normal signed-in Brave browser, with no login automation or sandbox changes.
+
+## Message box detection fix in 0.3.1
+
+The extension now checks all visible, editable message boxes instead of stopping at a hidden first match. It supports textareas and rich editors, including composer layouts without a form, while keeping attachment and Send checks inside one composer. It waits up to 30 seconds for the message box to load before claiming any clips. Ambiguous editors, conversation-message editors and dialogs are not selected.
+
+Replace the files in your loaded extension folder, click **Reload** at `brave://extensions`, and refresh the ChatGPT tab. Confirm **0.3.1** in the popup heading, then arm the chat again. If a previous transfer is still claimed in Windows, first stop the extension and choose **Retry unattempted transfers**. No clips need reprocessing.
 
 ## Update and pair
 

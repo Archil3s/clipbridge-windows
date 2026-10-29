@@ -98,7 +98,10 @@
     try {
       checkContext();
       let ui = composer.find();
-      if (!ui) throw new Error("Cannot identify the ChatGPT composer. Use manual attachment.");
+      if (!ui) {
+        await report('Waiting for the ChatGPT message box to load. No clips claimed.');
+        await waitFor(() => { ui = composer.find(); return !!ui; }, 30000, composer.problem());
+      }
       if (!composer.empty(ui)) throw new Error("The composer already contains text or attachments. Send or remove them before arming.");
       const firstInput = inputForVideos();
       if (!firstInput) {

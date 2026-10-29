@@ -6,11 +6,19 @@ const path = require('node:path');
 const { chromium } = require('../../cloudflare-dashboard/node_modules/playwright');
 const root = path.resolve(__dirname, '../..');
 function fixture(mode) {
-  return `<!doctype html><html><body><form><div data-type="unified-composer"><textarea id="prompt-textarea"></textarea></div><input type="file" multiple accept="video/mp4"><div id="chips"></div><button type="button" data-testid="send-button" disabled>Send</button></form><div id="turns"></div><script>
+  const rich = ['rich', 'delayed'].includes(mode);
+  const controls = '<input type="file" multiple accept="video/mp4"><div id="chips"></div><button type="button" ' +
+    (rich ? 'id="composer-submit-button"' : 'data-testid="send-button"') + ' disabled>Send</button>';
+  const markup = rich ? '<textarea id="prompt-textarea" hidden></textarea><div id="composer-background"><div><div id="prompt-textarea" contenteditable="true" class="ProseMirror" role="textbox"><p><br></p></div></div>' + controls + '</div>' :
+    '<form><div data-type="unified-composer"><textarea id="prompt-textarea"></textarea></div>' + controls + '</form>';
+  return `<!doctype html><html><body><main>${markup}<div id="turns"></div></main><script>
     const mode=${JSON.stringify(mode)};
-    const input=document.querySelector('input'),editor=document.querySelector('textarea'),send=document.querySelector('button'),chips=document.querySelector('#chips');
+    const input=document.querySelector('input'),editor=document.querySelector('[contenteditable="true"]')||document.querySelector('textarea'),send=document.querySelector('button'),chips=document.querySelector('#chips');
+    const getText=()=>editor.isContentEditable?editor.innerText:editor.value;
+    const setText=value=>{if(editor.isContentEditable)editor.textContent=value;else editor.value=value;};
     window.changes=[];window.sends=[];window.payloads=[];window.premature=false;
-    if(mode==='draft')editor.value='My unfinished reel instructions';
+    if(mode==='delayed'){const root=document.querySelector('#composer-background');root.remove();setTimeout(()=>document.querySelector('main').prepend(root),3500);}
+    if(mode==='draft')setText('My unfinished reel instructions');
     input.onchange=async()=>{
       const files=Array.from(input.files);window.changes.push(files.map(file=>file.name));window.currentFiles=files;
       send.disabled=true;chips.replaceChildren();
@@ -18,14 +26,14 @@ function fixture(mode) {
       const progress=document.createElement('span');progress.setAttribute('role','progressbar');progress.textContent='Uploading';chips.append(progress);
       window.payloads.push(await Promise.all(files.map(async file=>({name:file.name,size:file.size,bytes:Array.from(new Uint8Array(await file.arrayBuffer()))}))));
       if(mode==='error')setTimeout(()=>{const alert=document.createElement('div');alert.setAttribute('role','alert');alert.textContent='Upload limit reached';document.body.append(alert);},100);
-      if(mode==='edit')setTimeout(()=>{editor.value='My own instructions, keep this text';editor.dispatchEvent(new Event('input',{bubbles:true}));},300);
+      if(mode==='edit')setTimeout(()=>{setText('My own instructions, keep this text');editor.dispatchEvent(new Event('input',{bubbles:true}));},300);
       if(mode!=='pending')setTimeout(()=>{progress.remove();send.disabled=mode==='disabled';},450);
     };
     send.onclick=()=>{
       if(chips.querySelector('[role="progressbar"]'))window.premature=true;
-      window.sends.push({names:window.currentFiles.map(file=>file.name),message:editor.value});
-      const turn=document.createElement('div');turn.setAttribute('data-message-author-role','user');turn.textContent=editor.value;document.querySelector('#turns').append(turn);
-      chips.replaceChildren();input.value='';editor.value='';send.disabled=true;
+      window.sends.push({names:window.currentFiles.map(file=>file.name),message:getText()});
+      const turn=document.createElement('div');turn.setAttribute('data-message-author-role','user');turn.textContent=getText();document.querySelector('#turns').append(turn);
+      chips.replaceChildren();input.value='';setText('');send.disabled=true;
       const stop=document.createElement('button');stop.setAttribute('data-testid','stop-button');stop.textContent='Stop';document.body.append(stop);
       setTimeout(()=>{const reply=document.createElement('div');reply.setAttribute('data-message-author-role','assistant');reply.textContent='Batch received';document.querySelector('#turns').append(reply);stop.remove();},500);
     };
@@ -67,6 +75,11 @@ async function run(mode) {
         ...(mode==='manual'?{}:{autoSend:true}),batchPrompt:'Gardening clips for reels. Wait for my instructions.'});
       await handle({type:'arm'},{id:chrome.runtime.id,url:chrome.runtime.getURL('popup.html')});
     },mode);
+    if(mode==='delayed') {
+      await page.waitForTimeout(1900);
+      assert.equal((await worker.evaluate(()=>chrome.storage.session.get('batch'))).batch,undefined);
+      assert.match((await worker.evaluate(()=>chrome.storage.local.get('lastStatus'))).lastStatus,/Waiting for the ChatGPT message box/);
+    }
     if(mode==='draft') {
       await page.waitForFunction(async()=>window.changes.length===0&&document.querySelector('textarea').value.length>0);
       for(let i=0;i<30;i++){
@@ -80,7 +93,7 @@ async function run(mode) {
       assert.equal(await page.evaluate(()=>window.sends.length),0);
     } else {
       await page.waitForFunction(()=>window.changes.length>0,null,{timeout:15000});
-      if(mode==='auto') {
+      if(['auto','rich','delayed'].includes(mode)) {
         await page.waitForFunction(()=>window.sends.length===2,null,{timeout:25000});
         const result=await page.evaluate(()=>({sends:window.sends,changes:window.changes,premature:window.premature,payloads:window.payloads}));
         assert.deepEqual(result.changes.map(files=>files.length),[3,1]);
@@ -113,6 +126,6 @@ async function run(mode) {
   }
 }
 (async()=>{
-  for(const mode of ['manual','auto','pending','disabled','partial','error','edit','navigation','draft']) await run(mode);
+  for(const mode of ['manual','auto','rich','delayed','pending','disabled','partial','error','edit','navigation','draft']) await run(mode);
   console.log('Synthetic pages/files only. Normal Brave, real Google sign-in and live ChatGPT acceptance are not tested.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -40,7 +40,10 @@ jobs:
         working-directory: cloudflare-dashboard
         run: npx playwright install chromium
       - name: Test real MV3 transport against local bridge and synthetic page
-        run: node tests/brave-extension/browser-transport.cjs
+        run: |
+          node tests/brave-extension/composer-browser.cjs
+          if ($LASTEXITCODE -ne 0) { throw "Composer regression tests failed" }
+          node tests/brave-extension/browser-transport.cjs
       - name: Publish Windows desktop app
         run: dotnet publish src/ClipBridge/ClipBridge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o publish -warnaserror
       - name: Upload portable Windows build

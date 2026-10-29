@@ -2,6 +2,7 @@
 const byId = id => document.getElementById(id);
 const setStatus = text => { byId('status').textContent = text; };
 async function load() {
+  byId('version').textContent = chrome.runtime.getManifest().version;
   await chrome.runtime.sendMessage({ type: 'settings-ready' });
   const values = await chrome.storage.local.get(['pairingKey', 'enabled', 'lastStatus', 'batchSize', 'autoSend', 'batchPrompt']);
   byId('key').value = values.pairingKey || '';
