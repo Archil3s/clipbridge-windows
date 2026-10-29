@@ -6,6 +6,7 @@
         Background="{StaticResource WindowBackground}"
         FontFamily="Segoe UI" Foreground="White"
         AllowDrop="True" Drop="Window_Drop" DragOver="Window_DragOver">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <Grid Margin="28">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -47,7 +48,7 @@
                 <Button x:Name="ClearButton" Content="Clear queue" DockPanel.Dock="Right"
                         HorizontalAlignment="Right" Click="ClearButton_Click" />
             </DockPanel>
-            <ListBox x:Name="VideoList" Grid.Row="1" Background="#0F172A" BorderBrush="#334155"
+            <ListBox x:Name="VideoList" Grid.Row="1" MinHeight="100" MaxHeight="220" Background="#0F172A" BorderBrush="#334155"
                      BorderThickness="1" Foreground="White" FontSize="13" Padding="8" />
         </Grid>
 
@@ -91,7 +92,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Your Worker HTTPS URL" FontSize="11" Foreground="#94A3B8" />
-                        <TextBox x:Name="CloudflareUrlBox" Text="https://clipbridge-windows.daniel-dutoit.workers.dev"
+                        <TextBox x:Name="CloudflareUrlBox" Text=""
                                  VerticalContentAlignment="Center" ToolTip="Cloudflare dashboard Worker address" />
                     </StackPanel>
                     <StackPanel Grid.Column="2">
@@ -130,8 +131,30 @@
             </WrapPanel>
             <TextBlock Text="For reusable garden footage, open B-roll cutter &amp; library. Mark In / Out, tag planting, harvesting, pruning and more, then filter saved clips with checkboxes."
                        Foreground="#A4F4DC" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0" />
-            <TextBlock Text="ClipBridge opens your normal Brave browser without automation or special security flags. Use Show next 3 clips to locate files; select and attach them manually in ChatGPT. No uploads or sends happen automatically."
+            <TextBlock Text="Open ChatGPT in normal Brave to sign in. An optional extension can attach video clips automatically, but you must review the attachments and send messages yourself."
                        Foreground="#94A3B8" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0" />
+            <Border Margin="0,12,0,0" Padding="12" BorderThickness="1" BorderBrush="#36624E"
+                    CornerRadius="10" Background="#14271E">
+                <StackPanel>
+                    <TextBlock Text="Brave auto-attach (optional)" FontWeight="Bold" Foreground="#A4F4DC" />
+                    <CheckBox x:Name="AutoAttachEnabledBox"
+                              Content="Allow ClipBridge to offer prepared clips to the Brave extension"
+                              Checked="AutoAttachEnabledBox_Checked" Unchecked="AutoAttachEnabledBox_Unchecked"
+                              Foreground="White" Margin="0,6,0,8" />
+                    <WrapPanel>
+                        <Button x:Name="CopyBridgeKeyButton" Content="Copy extension pairing key"
+                                Click="CopyBridgeKeyButton_Click" IsEnabled="False" />
+                        <Button x:Name="NextBridgeBatchButton" Content="Allow next 3 clips"
+                                Click="NextBridgeBatchButton_Click" IsEnabled="False" />
+                        <Button Content="Retry unattempted transfers" Click="RetryBridgeButton_Click" />
+                    </WrapPanel>
+                    <TextBlock x:Name="BraveBridgeStatusLabel"
+                               Text="Disabled. Enable the bridge and install the ClipBridge Brave extension."
+                               FontSize="11" Foreground="#C4D7CD" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="BraveBridgeQueueLabel" FontSize="11" Foreground="#C4D7CD" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </Grid>
+    </ScrollViewer>
 </Window>

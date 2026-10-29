@@ -4,6 +4,23 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Reliability fixes
+- Move authenticated localhost networking into an MV3 service worker; restrict pairing storage to trusted extension contexts and reject webpage origins at the bridge.
+- Restrict transfers to one explicitly armed top-level ChatGPT document. Transfer in bounded chunks with per-attempt claims and reject stale acknowledgements.
+- Reserve attempts durably before DOM dispatch; pause for review after each clip and retain a three-attempt PC batch ceiling. Interrupted transfers can be explicitly retried without replaying reserved attempts.
+- Invalid optional Cloudflare settings now disable monitoring without aborting local video processing. Remove the prefilled personal Worker URL.
+- Remember custom B-roll library destinations, preserve existing tags/filtering and resolve nullable library warnings.
+- Make the main Windows layout scrollable and add an explicit unattempted-transfer retry control.
+- Add dependency-free .NET bridge/monitoring/library checks and Node extension tests to Windows CI; include the service worker in downloadable extension artifacts.
+
+
+### Added
+- Optional opt-in **Brave Auto Attach** browser extension and per-user authenticated localhost video transfer bridge (port 38419). Uses normal signed-in Brave, never Playwright, `--no-sandbox`, or Google login automation.
+- Windows controls to enable/disable the bridge, copy the private pairing key, and authorise the next group of up to 3 clips.
+- Extension popup for pairing, enabling/disabling and arming a specific ChatGPT tab. It attempts to supply prepared clips through the ChatGPT file input; it does not confirm successful uploads or send messages.
+- GitHub Actions now packages the unpacked Brave extension with the Windows installer and checks extension JavaScript syntax.
+- The manual clip-batch option remains available when attachment via the extension is unsupported or fails.
+
 ### Fixed
 - Fixed Brave's `--no-sandbox` warning and Google sign-in rejection triggered by ClipBridge launching a Playwright-controlled Brave session.
 - **Open ChatGPT in Brave** now launches the normal browser through Windows without Playwright, sandbox-disabling flags or a separate automation profile.

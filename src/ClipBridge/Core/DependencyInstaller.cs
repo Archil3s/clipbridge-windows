@@ -23,6 +23,8 @@ public static class DependencyInstaller
         "ClipBridge", "Tools");
 
     public static bool Installed =>
+        (File.Exists(Path.Combine(AppContext.BaseDirectory, "ffmpeg.exe")) &&
+        File.Exists(Path.Combine(AppContext.BaseDirectory, "ffprobe.exe"))) ||
         File.Exists(Path.Combine(ToolsDirectory, "ffmpeg.exe")) &&
         File.Exists(Path.Combine(ToolsDirectory, "ffprobe.exe"));
 

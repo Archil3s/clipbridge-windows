@@ -7,9 +7,6 @@ on:
       - "cloudflare-dashboard/**"
       - ".github/workflows/cloudflare-dashboard-check.yml"
   pull_request:
-    paths:
-      - "cloudflare-dashboard/**"
-      - ".github/workflows/cloudflare-dashboard-check.yml"
   workflow_dispatch:
 
 jobs:

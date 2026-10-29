@@ -25,3 +25,7 @@ This is the forward-looking plan. Items are targets, not promises or shipped fun
 ## How to propose features
 
 Open a GitHub issue with: problem, expected workflow, acceptance tests, edge cases, and whether the feature affects privacy or file handling. Mention the intended milestone. Document user-visible additions in CHANGELOG before a release.
+
+## Brave attachment reliability
+
+Implemented MV3 worker transport, explicit tab/document arming, durable attempt reservations and conservative one-attempt review steps (up to three per desktop batch). Remaining: real Brave/Google sign-in and account-specific ChatGPT video acceptance verification. Stable automatic upload-completion detection is not available; manual review and fallback remain required.

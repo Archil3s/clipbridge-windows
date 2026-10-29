@@ -35,3 +35,9 @@ Keep `src/ClipBridge/ClipBridge.csproj` and `installer/ClipBridge.iss` version v
 ## Security
 
 Use GitHub Secrets only for authorised deployment credentials. Cloudflare Worker `INGEST_TOKEN` and `VIEW_TOKEN` must be created in Cloudflare, not committed. Uploaded video files, browser profiles and local job journals remain outside Git.
+
+## Preview artifact checks
+
+The Windows workflow runs `dotnet run --project tests/ClipBridge.Core.Tests -c Release` and `node --test tests/brave-extension/*.test.cjs`. These are executable regression checks without additional test packages. A non-zero result fails CI. Inspect the installer and `ClipBridge-Brave-Extension` artifacts from the same run; the extension must include `background.js`. Main-branch builds publish preview Actions artifacts without creating a stable tag.
+
+Before claiming real upload support, perform the small-video checklist in `brave-extension/README.md` using normal Brave. Record separately whether Google sign-in, DOM dispatch, and ChatGPT upload acceptance were observed.

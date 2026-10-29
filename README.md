@@ -17,8 +17,15 @@ ClipBridge is a Windows-only C# / WPF desktop application that prepares large vi
 - A Windows **Inno Setup installer** and portable ZIP built by GitHub Actions.
 - **Zero manual FFmpeg setup:** on first launch, ClipBridge downloads FFmpeg and FFprobe automatically and installs them for your Windows account, then reuses them on later launches.
 - **Normal Brave browser sign-in:** opens ChatGPT in your already-installed Brave browser with no Playwright, `--no-sandbox`, or automation profile. Sign into ChatGPT directly in Brave.
-- **Manual clip-batch handoff:** **Show next 3 clips (manual)** opens your output folder, identifies the next video files, and lets you drag or select them for upload yourself. The app does not attach files or submit messages.
+- **Optional Brave auto-attach extension (experimental):** an unpacked extension lets a signed-in, explicitly armed ChatGPT tab request prepared clips from a secure localhost bridge. It attempts one clip per explicit arming, up to 3 per authorised PC batch; you must confirm the attachments are accepted and send the ChatGPT message yourself. No browser automation, `--no-sandbox`, Google sign-in automation, or external clip server.
+- **Manual clip-batch fallback:** **Show next 3 clips (manual)** opens your output folder, identifies the next files, and lets you drag or select them if automatic attachment is unavailable.
 - Manual fallback: open ChatGPT and drag clips into the browser.
+
+## Experimental automatic ClipBridge attachments in Brave
+
+The optional Brave extension and locally authenticated transfer bridge can **attempt** file attachment in a normal, signed-in Brave session. Download both the Windows installer and `ClipBridge-Brave-Extension` from the **same successful build**, then follow the [extension installation and pairing guide](brave-extension/README.md).
+
+Enable the bridge in Windows, copy its pairing key into the extension, open the desired ChatGPT conversation in normal Brave, and select **Arm this ChatGPT tab**. After splitting, one clip is attempted per arming, up to 3 per PC batch. Review ChatGPT and re-arm between clips. **This does not prove that ChatGPT finished uploading any file**; check the actual composer and send messages manually. The extension is unpublished and must be loaded unpacked using `brave://extensions` Developer mode. The manual clip workflow remains available.
 
 ## B-roll cutter and gardening library (new preview feature)
 
@@ -72,6 +79,9 @@ The GitHub Actions workflow handles publishing and compiling the installer.
 
 ## Cloudflare live monitoring (optional)
 
+Monitoring is disabled by default. Missing/invalid URLs or ingest tokens disable reporting with a visible error while splitting/compression continues locally. Configuration is validated only when enabled. B-roll cutting does not depend on monitoring.
+
+
 The separate dashboard lives under `cloudflare-dashboard/` and is deployed as the Worker `clipbridge-windows`. First configure a Cloudflare KV binding named `STATUS_STORE`, and separate 32+ character Worker secrets `INGEST_TOKEN` (Windows app only) and `VIEW_TOKEN` (dashboard viewer). See [dashboard setup](cloudflare-dashboard/README.md).
 
 In ClipBridge Windows: tick **Enable optional Cloudflare live monitoring**, enter your HTTPS Worker URL and its **INGEST_TOKEN**. The token stays in process memory and must be entered again on restart. The Windows app sends a small status JSON POST about every five seconds while open, never original video content. In the webpage, press **Connect dashboard** and enter the distinct **VIEW_TOKEN**. The website polls about every five seconds. Cloudflare KV provides eventually consistent near-live status; real-time delivery is not guaranteed.
@@ -116,3 +126,9 @@ Do not commit recordings, auth cookies, credentials, browser profiles, or API ke
 - [docs/RELEASING.md](docs/RELEASING.md): how to version, build, smoke-test and tag a release.
 - The installer and app version are checked by CI to match the changelog.
 - GitHub Actions creates preview artifacts on pushes and pull requests; **GitHub Releases only on an intentional `vX.Y.Z` tag**. No automatic self-update is implemented yet.
+
+## Reliability checks
+
+Run `dotnet run --project tests/ClipBridge.Core.Tests -c Release` and `node --test tests/brave-extension/*.test.cjs`. The Windows workflow runs both before publishing and packages the MV3 worker with the extension. The dashboard workflow runs its desktop/phone and accessibility tests for every PR. See [validation and limitations](docs/VALIDATION.md).
+
+The selected B-roll library destination and per-clip gardening tags survive restarts. The main window scrolls when settings exceed the available height. Automatic attachment reservations persist as local hashed file fingerprints; uncertain attempts need manual review, not automatic replay.

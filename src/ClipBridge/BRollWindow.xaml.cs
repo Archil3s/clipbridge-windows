@@ -14,6 +14,9 @@ namespace ClipBridge;
 
 public partial class BRollWindow : Window
 {
+    private readonly LibrarySettings _librarySettings = new(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "ClipBridge", "broll-library-root.json"));
     private readonly ObservableCollection<BRollLibraryItem> _savedItems = [];
     private readonly DispatcherTimer _playbackTimer;
     private string? _sourcePath;
@@ -39,6 +42,16 @@ public partial class BRollWindow : Window
     {
         InitializeComponent();
         LibraryFolderBox.Text = BRollCutter.DefaultLibraryPath;
+        try
+        {
+            LibraryFolderBox.Text = _librarySettings.ReadRoot() ?? BRollCutter.DefaultLibraryPath;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+            System.Text.Json.JsonException or ArgumentException)
+        {
+            ExportStatusLabel.Text = "Could not restore library folder: " + ex.Message +
+                " Choose the library folder again.";
+        }
         SavedClipsList.ItemsSource = _savedItems;
         SeekSlider.IsEnabled = false;
         PlayPauseButton.IsEnabled = false;
@@ -226,6 +239,11 @@ public partial class BRollWindow : Window
         if (picker.ShowDialog(this) == true)
         {
             LibraryFolderBox.Text = picker.FolderName;
+            try { _librarySettings.SaveRoot(picker.FolderName); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                ExportStatusLabel.Text = "Folder selected for this session, but could not save it: " + ex.Message;
+            }
             _ = ReloadLibraryAsync();
         }
     }
