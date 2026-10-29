@@ -42,3 +42,14 @@ This review applies the vendored Anti Slop v3.2.24 rules and ClipBridge's [DESIG
 | Real Windows to Cloudflare end-to-end status | NOT VERIFIED: requires real credentials, KV binding and PC testing |
 
 Do not label this implementation as fully validated until its CI and Cloudflare production checks pass.
+
+## v0.3 follow-up: setup and connection diagnostics
+
+The next usability pass focuses on the first-time visitor's actual blocker: a healthy HTML page may still have an unconfigured Worker or a desktop that never sent a status report.
+
+- **Primary improvement:** actionable numbered Cloudflare/Windows setup sequence, visible while not actively reporting.
+- **Diagnostic separation:** `GET /api/health` verifies only the Worker endpoint; it does not authenticate, establish KV, or declare the PC connected.
+- **Authenticated control:** manual refresh becomes available only after a successful viewer-token exchange and is disabled during sample preview.
+- **State clarity:** explicit checking, not reporting, disconnected, and authenticated states.
+- **Validation:** GitHub Playwright desktop/mobile tests now include Worker available/unavailable, an unpaired setup guide, and authenticated manual refresh.
+- **Outstanding:** production Cloudflare deployment and Windows-to-Cloudflare end-to-end status are not verifiable without the account configuration. An automated browser test is not proof of successful live deployment.
