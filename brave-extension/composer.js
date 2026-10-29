@@ -1,15 +1,46 @@
 "use strict";
 (() => {
   const visible = element => !!element && element.getClientRects().length > 0 &&
-    getComputedStyle(element).visibility !== "hidden";
+    getComputedStyle(element).visibility !== "hidden" && !element.closest('[hidden], [inert]');
+  const editorSelector = '#prompt-textarea, [data-testid="prompt-textarea"], textarea[name="prompt-textarea"], ' +
+    '[contenteditable="true"].ProseMirror, [contenteditable="true"][role="textbox"], [contenteditable="plaintext-only"][role="textbox"]';
+  const sendSelector = 'button[data-testid="send-button"], button#composer-submit-button, ' +
+    'button[aria-label="Send prompt"], button[aria-label="Send message"]';
+  const rootSelector = 'form, [data-testid="composer"], [data-type="unified-composer"], #composer-background';
+  const boundarySelector = 'body, html, main, [role="main"], article, [data-message-author-role], ' +
+    '[data-testid^="conversation-turn"], [role="dialog"]';
+  const controlSelector = sendSelector + ', button[data-testid="stop-button"], button#composer-plus-btn, ' +
+    'button[data-testid="composer-plus-btn"], button[data-testid="voice-mode-button"]';
   const text = editor => ("value" in editor ? editor.value : editor.innerText || editor.textContent || "").trim();
+  function editors() {
+    return [...document.querySelectorAll(editorSelector)].filter(editor => visible(editor) &&
+      !editor.closest('[role="dialog"], article, [data-message-author-role], [data-testid^="conversation-turn"]') &&
+      ((editor instanceof HTMLTextAreaElement && !editor.disabled && !editor.readOnly) || editor.isContentEditable));
+  }
+  function rootFor(editor, candidates) {
+    let fallback = null;
+    let controls = null;
+    for (let root = editor.parentElement, depth = 0; root && depth < 12; root = root.parentElement, depth++) {
+      if (root.matches(boundarySelector) || root.querySelector('[data-message-author-role], [data-testid^="conversation-turn"]')) break;
+      if (candidates.filter(candidate => root.contains(candidate)).length !== 1) break;
+      if (!controls && [...root.querySelectorAll(controlSelector)].some(visible)) controls = root;
+      if (root.matches(rootSelector)) fallback = root;
+    }
+    return fallback && (!controls || fallback.contains(controls)) ? fallback : controls;
+  }
   function find() {
-    const editor = document.querySelector('#prompt-textarea, textarea[data-testid="prompt-textarea"]');
-    if (!editor || !visible(editor)) return null;
-    const root = editor.closest('form') || editor.closest('[data-testid="composer"], [data-type="unified-composer"]');
-    if (!root) return null;
-    const button = [...root.querySelectorAll('button[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="Send message"]')].find(visible);
-    return { editor, root, button };
+    const candidates = editors();
+    const composers = candidates.map(editor => {
+      const root = rootFor(editor, candidates);
+      if (!root) return null;
+      const buttons = [...root.querySelectorAll(sendSelector)].filter(visible);
+      return { editor, root, button: buttons.length === 1 ? buttons[0] : null };
+    }).filter(Boolean);
+    return composers.length === 1 ? composers[0] : null;
+  }
+  function problem() {
+    return editors().length === 0 ? 'No visible ChatGPT message box found. Open the chat and refresh the page, then arm again.' :
+      'The message box layout is ambiguous or unsupported. No clips were claimed. Refresh the chat before arming again.';
   }
   function error() {
     const alert = [...document.querySelectorAll('[role="alert"], [data-sonner-toast][data-type="error"]')]
@@ -59,5 +90,5 @@
   }
   function turns(role) { return [...document.querySelectorAll('[data-message-author-role="' + role + '"]')]; }
   function responding() { return [...document.querySelectorAll('button[data-testid="stop-button"]')].some(visible); }
-  globalThis.ClipBridgeComposer = { find, text, error, pending, hasNames, empty, ready, write, turns, responding };
+  globalThis.ClipBridgeComposer = { find, problem, text, error, pending, hasNames, empty, ready, write, turns, responding };
 })();

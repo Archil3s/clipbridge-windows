@@ -4,6 +4,12 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Extension 0.3.1
+- Fix composer detection when the first editor is hidden or the visible message box uses a rich editor without a form. Recognize the composer submit button ID and keep sibling attachment chips within the detected container.
+- Wait up to 30 seconds for a visible composer before claiming clips. Reject ambiguous editors and fields inside conversation messages or dialogs.
+- Show the loaded version in the extension popup to make incomplete upgrades visible.
+- Add 18 synthetic composer-layout checks, a rich-editor readiness check, and full batch regressions for formless and delayed composers. These are not live ChatGPT acceptance tests.
+
 ### Batch upload changes
 - Add **Add prepared clips** to rebuild the attachment queue from saved outputs after an upgrade/restart without reprocessing the source.
 - Add configurable multi-file batches (1–10 clips, capped at 1 GB total locally) and two concurrent local transfers using 2 MiB chunks. All files are offered together.

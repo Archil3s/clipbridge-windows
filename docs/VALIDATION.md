@@ -8,7 +8,8 @@
 - B-roll metadata: custom destination reload, multi-tag persistence, tag edits, any-selected-tag filtering and no-filter behavior.
 - Real FFmpeg synthetic-video tests: stream-copy splitting, compression with invalid monitoring disabled, B-roll export into a category directory, expected In/Out duration and unchanged source bytes. Run with `dotnet run --project tests/ClipBridge.Core.Tests -c Release -- --video` on Windows with FFmpeg/FFprobe in ClipBridge's installed tools directory.
 - Eleven Node tests cover manifest permissions, credential isolation, unarmed/foreign-tab/frame/document rejection, chunk protocol, navigation/reload/disable, rejected malformed ranges and explicit auto-send authorization and one-send reservation guards.
-- Nine real sandboxed Chromium scenarios load the actual MV3/composer code, use the real .NET bridge on an isolated test port, and exercise synthetic ChatGPT-shaped pages. They verify three-file dispatch with auto-send off, automatic batches of 3+1 with exact 700,000-byte payloads, pending uploads, disabled Send, missing filenames, visible limits, user edits, navigation and an existing draft. The test-only extension copy changes only its loopback port so the user's running app is untouched. No normal Brave profile or real account is used. Windows CI runs these before packaging.
+- Eighteen sandboxed Chromium layout checks cover textarea and rich editors, form and formless containers, hidden placeholders, sibling attachments, alternate editor attributes, disabled/read-only fields, dialogs, conversation editors and ambiguous layouts. A further rich-editor check exercises text insertion and readiness with pending uploads, disabled Send and user edits.
+- Eleven real sandboxed Chromium scenarios load the actual MV3/composer code, use the real .NET bridge on an isolated test port, and exercise synthetic ChatGPT-shaped pages. They verify three-file dispatch with auto-send off, automatic batches of 3+1 with exact 700,000-byte payloads, formless rich editors with a hidden first editor, delayed composer mounting without early claims, pending uploads, disabled Send, missing filenames, visible limits, user edits, navigation and an existing draft. The test-only extension copy changes only its loopback port so the user's running app is untouched. No normal Brave profile or real account is used. Windows CI runs these before packaging.
 - The existing dashboard CI runs desktop/phone and axe accessibility tests for every PR. No dashboard application source is changed by this task.
 
 ## Reproduce
@@ -22,6 +23,7 @@ npm --prefix cloudflare-dashboard install --no-audit --no-fund --no-package-lock
 Push-Location cloudflare-dashboard
 npx playwright install chromium
 Pop-Location
+node tests/brave-extension/composer-browser.cjs
 node tests/brave-extension/browser-transport.cjs
 ```
 

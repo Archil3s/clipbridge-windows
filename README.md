@@ -25,6 +25,8 @@ ClipBridge is a Windows-only C# / WPF desktop application that prepares large vi
 
 The optional Brave extension and locally authenticated transfer bridge can **attempt** file attachment in a normal, signed-in Brave session. Download both the Windows installer and `ClipBridge-Brave-Extension` from the **same successful build**, then follow the [extension installation and pairing guide](brave-extension/README.md).
 
+Extension **0.3.1** fixes message-box detection for layouts without a form and pages with hidden editor placeholders. It also waits for the editor to load before claiming clips. Existing Windows 0.5.0 installations only need the extension update: replace its files, reload it in Brave, then refresh ChatGPT. The popup heading shows the loaded extension version.
+
 Enable the bridge in Windows, copy its pairing key into the extension, open the desired ChatGPT conversation in normal Brave, and select **Arm this ChatGPT tab**. After splitting, a multi-clip batch is transferred locally with two concurrent downloads and offered together. By default, review and send manually. If you explicitly enable automatic Send, the extension checks filenames, progress indicators and the enabled Send button before one send attempt, then observes a new user message and waits for the assistant before continuing the queue. Website readiness is not proof of successful video analysis; unknown states pause. The extension is unpublished and must be loaded unpacked using `brave://extensions` Developer mode. The manual clip workflow remains available.
 
 ## B-roll cutter and gardening library (new preview feature)
