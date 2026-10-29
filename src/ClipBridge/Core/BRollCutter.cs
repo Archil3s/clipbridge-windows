@@ -75,8 +75,8 @@ public sealed class BRollCutter
         string sourceName = SanitizeLabel(Path.GetFileNameWithoutExtension(input), "Video");
         string destinationFolder = Path.Combine(Path.GetFullPath(libraryRoot), safeCategory);
         Directory.CreateDirectory(destinationFolder);
-        string stamp = start.ToString(@"hh\mm\ss", CultureInfo.InvariantCulture) +
-            "-" + end.ToString(@"hh\mm\ss", CultureInfo.InvariantCulture);
+        string stamp = start.ToString(@"hh\-mm\-ss", CultureInfo.InvariantCulture) +
+            "_to_" + end.ToString(@"hh\-mm\-ss", CultureInfo.InvariantCulture);
         string label = $"{safeTitle}_{sourceName}_{stamp}";
         if (label.Length > 105) label = label[..105].TrimEnd(' ', '_');
         string name = label + "_" + Guid.NewGuid().ToString("N")[..8];
