@@ -333,16 +333,28 @@ public partial class MainWindow : Window
         try
         {
             _chatGptBrowser.Open();
-            string sourceFolder = Path.GetDirectoryName(next[0])!;
-            Process.Start(new ProcessStartInfo("explorer.exe", sourceFolder)
+            string[] folders = next.Select(Path.GetDirectoryName)
+                .Where(folder => !string.IsNullOrWhiteSpace(folder))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(folder => folder!)
+                .ToArray();
+            foreach (string folder in folders)
             {
-                UseShellExecute = true
-            });
+                var explorer = new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    UseShellExecute = true
+                };
+                explorer.ArgumentList.Add(folder);
+                Process.Start(explorer);
+            }
             _uploadPosition += next.Length;
 
-            string fileNames = string.Join("\\n", next.Select(Path.GetFileName));
-            string summary = $"Files to select and attach manually:\\n\\n{fileNames}\\n\\n" +
-                "The output folder and normal Brave have been opened. " +
+            string newLine = Environment.NewLine;
+            string fileNames = string.Join(newLine, next.Select(Path.GetFileName));
+            string summary = "Files to select and attach manually:" + newLine + newLine +
+                fileNames + newLine + newLine +
+                "The output folder(s) and normal Brave have been opened. " +
                 "Select these clips in File Explorer, drag them into ChatGPT, check that they finish uploading, and send the message yourself. " +
                 "ClipBridge has not uploaded any files.";
             StatusLabel.Text = $"Showing {next.Length} clip(s) for manual upload. " +
