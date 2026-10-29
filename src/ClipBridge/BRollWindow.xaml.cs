@@ -360,6 +360,32 @@ public partial class BRollWindow : Window
     private async void RefreshLibraryButton_Click(object sender, RoutedEventArgs e) =>
         await ReloadLibraryAsync();
 
+    private async void ApplyTagsToSelectedButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (SavedClipsList.SelectedItem is not BRollLibraryItem item)
+        {
+            MessageBox.Show(this, "First select a clip from the saved library list.", "B-roll tags");
+            return;
+        }
+        string[] tags = CheckedTags(TagBoxes);
+        if (tags.Length == 0)
+        {
+            MessageBox.Show(this, "Tick at least one gardening topic in the upper tag section, then apply it to the selected clip.", "B-roll tags");
+            return;
+        }
+        try
+        {
+            await BRollLibrary.UpdateTagsAsync(item, tags, CancellationToken.None);
+            ExportStatusLabel.Text = $"Updated gardening topics on {item.Title}: {string.Join(", ", tags)}";
+            await ReloadLibraryAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            MessageBox.Show(this, ex.Message, "Could not update B-roll tags",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void SavedClipsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (SavedClipsList.SelectedItem is BRollLibraryItem item && File.Exists(item.FilePath))
