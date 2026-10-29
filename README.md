@@ -1,10 +1,15 @@
 # ClipBridge — Windows Video Splitter
 
-ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.3.0**.
+ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.4.0 (preview)**.
 
 ## Features
 
 - Drag and drop or multi-select large video files (including 15 GB+).
+- **Processing progress** from FFmpeg with compression/splitting phase and overall batch percentage.
+- **Disk-space preflight** with a conservative estimate before each source starts.
+- **Local recovery journal:** unfinished source files are requeued after a restart; validated completed outputs can be reused with matching settings (partial transcodes must restart).
+- **Opt-in Cloudflare status reporting** via the separate Worker dashboard, sending metadata only (file name, progress and clip counts). Status is retried every five seconds while enabled. No video bytes go to Cloudflare.
+- **CHANGELOG.md, ROADMAP.md, version checks, and tag-based GitHub Releases** for future updates.
 - Batch splitting into numbered clips, with a configurable maximum size (400 MB default).
 - Fast mode: FFmpeg stream-copy, without re-encoding.
 - Compression mode: H.264 video / AAC audio, with quality presets (CRF 24, 28, 32).
@@ -46,6 +51,14 @@ dotnet publish .\src\ClipBridge\ClipBridge.csproj -c Release -r win-x64 --self-c
 
 The GitHub Actions workflow handles publishing and compiling the installer.
 
+## Cloudflare live monitoring (optional)
+
+The separate dashboard lives under `cloudflare-dashboard/` and is deployed as the Worker `clipbridge-windows`. First configure a Cloudflare KV binding named `STATUS_STORE`, and separate 32+ character Worker secrets `INGEST_TOKEN` (Windows app only) and `VIEW_TOKEN` (dashboard viewer). See [dashboard setup](cloudflare-dashboard/README.md).
+
+In ClipBridge Windows: tick **Enable optional Cloudflare live monitoring**, enter your HTTPS Worker URL and its **INGEST_TOKEN**. The token stays in process memory and must be entered again on restart. The Windows app sends a small status JSON POST about every five seconds while open, never original video content. In the webpage, press **Connect dashboard** and enter the distinct **VIEW_TOKEN**. The website polls about every five seconds. Cloudflare KV provides eventually consistent near-live status; real-time delivery is not guaranteed.
+
+Cloudflare monitoring is **disabled by default**. Do not paste a Cloudflare account API token in either input. No browser authentication or ChatGPT login data is shared. If Cloudflare Access protects the API, allow an explicitly authenticated machine-to-machine route for the status writer (do not disable the API protection).
+
 ## How to test
 
 1. Install ClipBridge and open it. On the first run, the app downloads and verifies its FFmpeg video engine automatically. If the download fails, check your connection and click **Split videos** to retry.
@@ -53,7 +66,7 @@ The GitHub Actions workflow handles publishing and compiling the installer.
 3. Drag a small sample video into ClipBridge; set the target size (e.g. 100 MB).
 4. Choose **Fast split** first. Check every numbered part plays and retains its audio.
 5. Test **Compress — balanced (CRF 28)** with the same file, comparing total size and quality. Compression can be slower and may not always make already-compressed videos smaller.
-6. Try a larger video, then a 15 GB original. Leave enough free disk space for intermediate compressed content and clips.
+6. Try a larger video, then a 15 GB original. Confirm the disk estimate, percentage updates, cancellation, and recovery on app restart. Reusing an already completed input should not re-encode it. Leave enough free disk space for intermediate compressed content and clips.
 7. Click **Sign in to ChatGPT (Edge)**; sign in normally inside the Edge window and open the intended conversation.
 8. Click **Attach next 3 clips (experimental)**. Check that ChatGPT accepted them, and **send the message manually**.
 9. If that fails or ChatGPT blocks the file type, click **Manual ChatGPT** and use the normal browser attachment control.
@@ -68,9 +81,19 @@ The GitHub Actions workflow handles publishing and compiling the installer.
 - Fast mode is lossless stream-copy; compressed mode is intentionally lossy. Source files are preserved.
 - On first launch, ClipBridge downloads FFmpeg directly from a third-party provider; no original videos or credentials are uploaded as part of that setup. A network connection and free local disk space are needed for the one-time download.
 - Microsoft Edge is normally preinstalled on supported Windows versions. It is needed only for optional experimental browser-based ChatGPT attachment; if Edge is unavailable, manual upload still works in a browser.
+- Interrupted videos are requeued, but resume **from the beginning of that video**; only completed output sets are reused. There is no checkpointed mid-video resume yet.
+- Cloudflare KV and both Worker secrets must be configured by the account owner before monitoring can connect; the app can't deploy or configure these credentials itself.
 - Temporary transcodes use local disk and may be sizeable. Cancellation may leave partial output clips.
 - This is an unsigned early release. Windows installer smoke testing and real ChatGPT upload testing must be completed on the target PC.
 
 ## Repository safety
 
 Do not commit recordings, auth cookies, credentials, browser profiles, or API keys. No LocalSend monitoring, cloud processing, Android app, or OpenAI API key is included.
+
+## Tracking revisions and future updates
+
+- [CHANGELOG.md](CHANGELOG.md): shipped changes, known limitations and unreleased work.
+- [ROADMAP.md](ROADMAP.md): planned priorities with acceptance criteria.
+- [docs/RELEASING.md](docs/RELEASING.md): how to version, build, smoke-test and tag a release.
+- The installer and app version are checked by CI to match the changelog.
+- GitHub Actions creates preview artifacts on pushes and pull requests; **GitHub Releases only on an intentional `vX.Y.Z` tag**. No automatic self-update is implemented yet.
