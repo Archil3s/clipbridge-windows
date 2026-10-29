@@ -75,6 +75,12 @@
         ? "Latest status from ClipBridge Windows."
         : "This is the last reported job. The desktop is not currently reporting.");
     setText("progressText", Math.round(progress) + "%");
+    byId("jobRing").style.setProperty("--value", String(progress));
+    setText("ringValue", Math.round(progress) + "%");
+    setText("ringCaption", demo ? "Sample progress" : "Processed");
+    setText("ringHelp", demo
+      ? "Example only — not your PC"
+      : online ? "Latest video processing status" : "Last known status — PC offline");
     byId("progressFill").style.width = progress + "%";
     byId("progressTrack").setAttribute("aria-valuenow", String(progress));
     byId("progressTrack").setAttribute("aria-valuetext",
@@ -99,6 +105,10 @@
     setText("jobName", "No video reported");
     setText("jobHint", "Your latest video will appear here when the Windows app sends an update.");
     setText("progressText", "Not reported");
+    byId("jobRing").style.setProperty("--value", "0");
+    setText("ringValue", "—");
+    setText("ringCaption", "No job yet");
+    setText("ringHelp", "Waiting for video data");
     byId("progressFill").style.width = "0%";
     byId("progressTrack").setAttribute("aria-valuenow", "0");
     byId("progressTrack").setAttribute("aria-valuetext", "No job reported");
@@ -271,10 +281,12 @@
       if (result?.service !== "clipbridge-dashboard" || result?.ok !== true)
         throw Error("Unexpected API response");
       setText("workerConnection", "Available");
+      byId("workerDot").dataset.state = "ok";
       note.dataset.state = "ok";
       setText("workerCheckNote", "Worker API is responding. This does not verify KV, viewer access or your PC.");
     } catch {
       setText("workerConnection", "Unavailable");
+      byId("workerDot").dataset.state = "error";
       note.dataset.state = "error";
       setText("workerCheckNote", "Worker API unavailable. Check the Cloudflare deployment and use cloudflare-dashboard as its root directory.");
     } finally {
