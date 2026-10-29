@@ -19,6 +19,9 @@ public partial class MainWindow : Window
 
     private readonly ObservableCollection<string> _videos = [];
     private CancellationTokenSource? _cancellation;
+    private readonly ChatGptBrowser _chatGptBrowser = new();
+    private readonly List<string> _uploadQueue = [];
+    private int _uploadPosition;
 
     public MainWindow()
     {
@@ -64,6 +67,9 @@ public partial class MainWindow : Window
     private void ClearButton_Click(object sender, RoutedEventArgs e)
     {
         _videos.Clear();
+        _uploadQueue.Clear();
+        _uploadPosition = 0;
+        AttachButton.IsEnabled = false;
         StatusLabel.Text = "Queue cleared";
     }
 
@@ -94,6 +100,11 @@ public partial class MainWindow : Window
         _cancellation = new CancellationTokenSource();
         SetBusy(true);
         var splitter = new VideoSplitter();
+        _uploadQueue.Clear();
+        _uploadPosition = 0;
+        AttachButton.IsEnabled = false;
+        bool compress = ModeBox.SelectedIndex > 0;
+        int crf = ModeBox.SelectedIndex switch { 1 => 24, 2 => 28, 3 => 32, _ => 28 };
         string[] files = _videos.ToArray();
         int completed = 0;
         try
@@ -107,16 +118,20 @@ public partial class MainWindow : Window
                 string current = Path.GetFileName(file);
                 StatusLabel.Text = $"Splitting {completed + 1}/{files.Length}: {current}";
                 VideoList.SelectedItem = file;
-                SplitResult result = await splitter.SplitAsync(file, OutputFolderBox.Text, targetMb,
+                SplitResult result = await splitter.SplitAsync(file, OutputFolderBox.Text, targetMb, compress, crf,
                     _cancellation.Token);
                 if (!result.AllWithinLimit)
                     throw new InvalidOperationException(
                         $"Some segments of {current} exceed {targetMb} MB. Try a smaller target or an input with more frequent keyframes. Output: {result.OutputDirectory}");
+                _uploadQueue.AddRange(Directory.EnumerateFiles(result.OutputDirectory, "part_*.*")
+                    .Where(path => SupportedExtensions.Contains(Path.GetExtension(path)))
+                    .OrderBy(path => path, StringComparer.Ordinal));
+                AttachButton.IsEnabled = _uploadQueue.Count > 0;
                 completed++;
                 Progress.Value = completed * 100.0 / files.Length;
                 StatusLabel.Text = $"Finished {completed}/{files.Length}: {result.Parts} clips saved to {result.OutputDirectory}";
             }
-            StatusLabel.Text = $"Complete: {completed} video(s) processed. All output clips passed the file-size check.";
+            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open ChatGPT in Edge to attach them.";
         }
         catch (OperationCanceledException)
         {
@@ -153,6 +168,58 @@ public partial class MainWindow : Window
     {
         if (!Directory.Exists(OutputFolderBox.Text)) Directory.CreateDirectory(OutputFolderBox.Text);
         Process.Start(new ProcessStartInfo("explorer.exe", OutputFolderBox.Text) { UseShellExecute = true });
+    }
+
+    private async void ChatGptLoginButton_Click(object sender, RoutedEventArgs e)
+    {
+        ChatGptLoginButton.IsEnabled = false;
+        try
+        {
+            await _chatGptBrowser.OpenAsync();
+            StatusLabel.Text = "Edge opened with a dedicated ClipBridge profile. Sign into ChatGPT there once and choose a conversation.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this,
+                "Could not start the managed Edge browser: " + ex.Message +
+                "\\nYou can still click Manual ChatGPT and attach clips yourself.",
+                "ClipBridge browser", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally { ChatGptLoginButton.IsEnabled = true; }
+    }
+
+    private async void AttachButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_uploadPosition >= _uploadQueue.Count)
+        {
+            StatusLabel.Text = "All available clips have been offered to ChatGPT. Check Edge before sending.";
+            return;
+        }
+
+        AttachButton.IsEnabled = false;
+        try
+        {
+            string[] next = _uploadQueue.Skip(_uploadPosition).Take(3).ToArray();
+            int attempted = await _chatGptBrowser.TryAttachAsync(next);
+            _uploadPosition += attempted;
+            StatusLabel.Text = $"Attempted to attach {attempted} file(s) to ChatGPT. " +
+                $"{_uploadQueue.Count - _uploadPosition} remain. Verify upload acceptance in Edge and send manually.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this,
+                ex.Message + "\\nIf the ChatGPT interface or permissions prevent uploads, use Manual ChatGPT.",
+                "ClipBridge attachment", MessageBoxButton.OK, MessageBoxImage.Warning);
+            StatusLabel.Text = "Browser attachment did not complete. No files were marked attached; use the manual fallback.";
+        }
+        finally { AttachButton.IsEnabled = _uploadPosition < _uploadQueue.Count; }
+    }
+
+    protected override async void OnClosed(EventArgs e)
+    {
+        _cancellation?.Cancel();
+        await _chatGptBrowser.DisposeAsync();
+        base.OnClosed(e);
     }
 
     private void OpenChatGptButton_Click(object sender, RoutedEventArgs e)
