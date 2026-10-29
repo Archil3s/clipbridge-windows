@@ -6,7 +6,7 @@ namespace ClipBridge.Core;
 
 /// <summary>
 /// Experimental UI automation only; not an official ChatGPT API.
-/// Uses a dedicated, user-controlled Edge profile stored locally on this PC.
+/// Uses an isolated, user-controlled Brave profile stored locally on this PC.
 /// It never reads or exports credentials and never submits the chat message.
 /// </summary>
 public sealed class ChatGptBrowser : IAsyncDisposable
@@ -33,14 +33,14 @@ public sealed class ChatGptBrowser : IAsyncDisposable
         _playwright ??= await Playwright.CreateAsync();
         string profilePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ClipBridge", "ChatGptEdgeProfile");
+            "ClipBridge", "ChatGptBraveProfile");
         Directory.CreateDirectory(profilePath);
         try
         {
             _context = await _playwright.Chromium.LaunchPersistentContextAsync(
                 profilePath, new BrowserTypeLaunchPersistentContextOptions
                 {
-                    Channel = "msedge",
+                    ExecutablePath = BraveBrowserLocator.FindRequired(),
                     Headless = false,
                     AcceptDownloads = false,
                     ViewportSize = null
@@ -77,7 +77,7 @@ public sealed class ChatGptBrowser : IAsyncDisposable
         IPage page = _page!;
         if (!Uri.TryCreate(page.Url, UriKind.Absolute, out Uri? current) ||
             (current.Host != "chatgpt.com" && !current.Host.EndsWith(".chatgpt.com", StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidOperationException("Open a ChatGPT conversation in the Edge window, then retry.");
+            throw new InvalidOperationException("Open a ChatGPT conversation in the Brave window, then retry.");
 
         // A hidden file input often exists even before the attachment menu is opened.
         var inputs = page.Locator("input[type='file']");

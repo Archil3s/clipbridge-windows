@@ -16,7 +16,7 @@ ClipBridge is a Windows-only C# / WPF desktop application that prepares large vi
 - One-time compression before splitting to reduce total processing, plus size validation and adaptive segment-duration retries.
 - A Windows **Inno Setup installer** and portable ZIP built by GitHub Actions.
 - **Zero manual FFmpeg setup:** on first launch, ClipBridge downloads FFmpeg and FFprobe automatically and installs them for your Windows account, then reuses them on later launches.
-- **Experimental** Playwright browser-assisted ChatGPT attachment: starts Microsoft Edge with a separate persistent local profile, which you sign into once yourself. Attempts to attach up to three files per action. **You must check attachment status and send manually**.
+- **Experimental** Playwright browser-assisted ChatGPT attachment: starts Brave Browser with a separate persistent local profile, which you sign into once yourself. Attempts to attach up to three files per action. **You must check attachment status and send manually**.
 - Manual fallback: open ChatGPT and drag clips into the browser.
 
 ## B-roll cutter and gardening library (new preview feature)
@@ -37,7 +37,7 @@ Alternatively download `ClipBridge-win-x64-portable`, extract the whole director
 
 The third-party FFmpeg package is GPLv3 licensed; it is downloaded directly by the user rather than redistributed within this installer. The pinned package's SHA-256 is recorded in `src/ClipBridge/Core/DependencyInstaller.cs`. For a different FFmpeg release, update both the URL and its verified hash.
 
-Microsoft Edge is required only for optional experimental browser-assisted attachments. There is no API key.
+Brave Browser must be installed for optional browser-assisted attachments and the **Manual ChatGPT** Brave shortcut. There is no API key. ClipBridge looks for Brave in standard Windows installation folders and registered App Paths; custom installations can set the `CLIPBRIDGE_BRAVE_PATH` environment variable to the full path of `brave.exe`. It never silently switches back to Edge. The automated Brave window uses its **own local profile** at `%LOCALAPPDATA%\\ClipBridge\\ChatGptBraveProfile`; you'll sign in once even if your regular Brave browser already has a ChatGPT login. Neither your normal Brave profile nor the previous Edge profile is modified.
 
 ## Design and AI coding guidance
 
@@ -52,7 +52,7 @@ The repository also contains [curated Impeccable and Web Quality Skills referenc
 - Windows 10/11, x64
 - .NET 10 SDK
 - An internet connection for the one-time first launch, unless FFmpeg + FFprobe are already beside the executable or in ClipBridge's tools folder
-- Microsoft Edge for browser-assisted attachment
+- Brave Browser for browser-assisted attachment
 
 ```powershell
 dotnet restore .\src\ClipBridge\ClipBridge.csproj
@@ -83,8 +83,8 @@ Cloudflare monitoring is **disabled by default**. Do not paste a Cloudflare acco
 4. Choose **Fast split** first. Check every numbered part plays and retains its audio.
 5. Test **Compress — balanced (CRF 28)** with the same file, comparing total size and quality. Compression can be slower and may not always make already-compressed videos smaller.
 6. Try a larger video, then a 15 GB original. Confirm the disk estimate, percentage updates, cancellation, and recovery on app restart. Reusing an already completed input should not re-encode it. Leave enough free disk space for intermediate compressed content and clips.
-7. Click **Sign in to ChatGPT (Edge)**; sign in normally inside the Edge window and open the intended conversation.
-8. Click **Attach next 3 clips (experimental)**. Check that ChatGPT accepted them, and **send the message manually**.
+7. Click **Sign in to ChatGPT (Brave)**; sign in normally in the dedicated Brave window and open the intended conversation.
+8. Click **Attach next 3 clips (experimental)**. Check inside Brave that ChatGPT accepted them, and **send the message manually**.
 9. If that fails or ChatGPT blocks the file type, click **Manual ChatGPT** and use the normal browser attachment control.
 
 ## Limitations and privacy
@@ -92,11 +92,11 @@ Cloudflare monitoring is **disabled by default**. Do not paste a Cloudflare acco
 - Browser automation is **not an OpenAI-supported integration** and may break with a ChatGPT UI change. Calling the file input does **not confirm the upload succeeded**; inspect the actual ChatGPT page.
 - No background upload and no automatic Send. Each batch requires a user click.
 - File upload quotas, platform availability, and accepted video formats are controlled by ChatGPT. ClipBridge cannot bypass them.
-- A separate Edge browser profile is stored only on the PC at `%LOCALAPPDATA%\ClipBridge\ChatGptEdgeProfile`. Never upload this folder or authentication data to GitHub.
+- A separate Brave browser profile is stored only on the PC at `%LOCALAPPDATA%\ClipBridge\ChatGptBraveProfile`. Never upload this folder or authentication data to GitHub. ClipBridge does **not** import the former Edge automation profile.
 - Sparse keyframes, unusual codecs, or abrupt bitrate spikes can cause segments to exceed the size cap even after retries; in that case the app reports failure.
 - Fast mode is lossless stream-copy; compressed mode is intentionally lossy. Source files are preserved.
 - On first launch, ClipBridge downloads FFmpeg directly from a third-party provider; no original videos or credentials are uploaded as part of that setup. A network connection and free local disk space are needed for the one-time download.
-- Microsoft Edge is normally preinstalled on supported Windows versions. It is needed only for optional experimental browser-based ChatGPT attachment; if Edge is unavailable, manual upload still works in a browser.
+- Brave must be installed to use managed sign-in, experimental attachment and the manual Brave shortcut. If unavailable, open ChatGPT yourself in a browser and drag files in manually.
 - Interrupted videos are requeued, but resume **from the beginning of that video**; only completed output sets are reused. There is no checkpointed mid-video resume yet.
 - Cloudflare KV and both Worker secrets must be configured by the account owner before monitoring can connect; the app can't deploy or configure these credentials itself.
 - Temporary transcodes use local disk and may be sizeable. Cancellation may leave partial output clips.
