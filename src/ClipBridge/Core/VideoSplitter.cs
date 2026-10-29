@@ -145,7 +145,10 @@ public sealed class VideoSplitter
     private static string FindTool(string exe)
     {
         string bundled = Path.Combine(AppContext.BaseDirectory, exe);
-        return File.Exists(bundled) ? bundled : Path.GetFileNameWithoutExtension(exe);
+        if (File.Exists(bundled)) return bundled;
+        string installed = Path.Combine(DependencyInstaller.ToolsDirectory, exe);
+        if (File.Exists(installed)) return installed;
+        return Path.GetFileNameWithoutExtension(exe);
     }
 
     private static async Task<string> RunProcessAsync(string executable,
