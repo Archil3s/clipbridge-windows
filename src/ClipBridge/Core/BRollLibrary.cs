@@ -53,6 +53,47 @@ public static class BRollLibrary
         }
     }
 
+    public static async Task UpdateTagsAsync(
+        BRollLibraryItem item, IEnumerable<string> selectedTags, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(item.FilePath))
+            throw new FileNotFoundException("Saved B-roll file no longer exists.", item.FilePath);
+        var tags = selectedTags
+            .Where(tag => GardeningTags.Contains(tag, StringComparer.Ordinal))
+            .Distinct(StringComparer.Ordinal).ToList();
+        if (tags.Count == 0) throw new ArgumentException("Select at least one gardening topic.");
+
+        string sidecar = Path.ChangeExtension(item.FilePath, ".broll.json");
+        BRollClipMetadata? old = null;
+        if (File.Exists(sidecar))
+        {
+            try { old = JsonSerializer.Deserialize<BRollClipMetadata>(
+                await File.ReadAllTextAsync(sidecar, cancellationToken)); }
+            catch (JsonException)
+            {
+                throw new InvalidDataException("Tag metadata is damaged. Back it up before editing.");
+            }
+        }
+        var updated = new BRollClipMetadata(
+            old?.Title ?? item.Title, old?.SourceFileName ?? Path.GetFileName(item.FilePath),
+            old?.Category ?? item.Category, tags,
+            old?.StartSeconds ?? 0, old?.EndSeconds ?? 0,
+            old?.SavedUtc ?? File.GetCreationTimeUtc(item.FilePath));
+        string temporary = sidecar + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temporary,
+                JsonSerializer.Serialize(updated, new JsonSerializerOptions { WriteIndented = true }),
+                cancellationToken);
+            File.Move(temporary, sidecar, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary))
+                try { File.Delete(temporary); } catch (IOException) { }
+        }
+    }
+
     public static IReadOnlyList<BRollLibraryItem> FindClips(
         string libraryRoot, IEnumerable<string> checkedFilters)
     {
