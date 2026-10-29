@@ -245,7 +245,7 @@ public partial class MainWindow : Window
                     throw;
                 }
             }
-            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open ChatGPT in Brave to attach them.";
+            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open normal Brave, then choose clips to attach manually.";
         }
         catch (OperationCanceledException)
         {
@@ -298,49 +298,76 @@ public partial class MainWindow : Window
         Process.Start(new ProcessStartInfo("explorer.exe", OutputFolderBox.Text) { UseShellExecute = true });
     }
 
-    private async void ChatGptLoginButton_Click(object sender, RoutedEventArgs e)
+    private void ChatGptLoginButton_Click(object sender, RoutedEventArgs e)
     {
-        ChatGptLoginButton.IsEnabled = false;
         try
         {
-            await _chatGptBrowser.OpenAsync();
-            StatusLabel.Text = "Brave opened with a dedicated ClipBridge profile. Sign into ChatGPT there once and choose a conversation.";
+            _chatGptBrowser.Open();
+            StatusLabel.Text = "Opened ChatGPT in normal Brave without browser automation. Sign in there, then attach clips manually.";
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception)
         {
             MessageBox.Show(this,
-                "Could not start the managed Brave browser: " + ex.Message +
-                "\\nYou can still click Manual ChatGPT and attach clips yourself.",
+                "Could not open normal Brave: " + ex.Message +
+                "\\nInstall Brave or open ChatGPT manually in your browser.",
                 "ClipBridge browser", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-        finally { ChatGptLoginButton.IsEnabled = true; }
     }
 
-    private async void AttachButton_Click(object sender, RoutedEventArgs e)
+    private void AttachButton_Click(object sender, RoutedEventArgs e)
     {
         if (_uploadPosition >= _uploadQueue.Count)
         {
-            StatusLabel.Text = "All available clips have been offered to ChatGPT. Check Brave before sending.";
+            _uploadPosition = 0;
+            StatusLabel.Text = "Reached the end of the prepared clips. Starting again from the first set.";
+        }
+
+        string[] next = _uploadQueue.Skip(_uploadPosition).Take(3).Where(File.Exists).ToArray();
+        if (next.Length == 0)
+        {
+            StatusLabel.Text = "No prepared clips are available. Split a video first.";
+            AttachButton.IsEnabled = false;
             return;
         }
 
-        AttachButton.IsEnabled = false;
         try
         {
-            string[] next = _uploadQueue.Skip(_uploadPosition).Take(3).ToArray();
-            int attempted = await _chatGptBrowser.TryAttachAsync(next);
-            _uploadPosition += attempted;
-            StatusLabel.Text = $"Attempted to attach {attempted} file(s) to ChatGPT. " +
-                $"{_uploadQueue.Count - _uploadPosition} remain. Verify upload acceptance in Brave and send manually.";
+            _chatGptBrowser.Open();
+            string[] folders = next.Select(Path.GetDirectoryName)
+                .Where(folder => !string.IsNullOrWhiteSpace(folder))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(folder => folder!)
+                .ToArray();
+            foreach (string folder in folders)
+            {
+                var explorer = new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    UseShellExecute = true
+                };
+                explorer.ArgumentList.Add(folder);
+                Process.Start(explorer);
+            }
+            _uploadPosition += next.Length;
+
+            string newLine = Environment.NewLine;
+            string fileNames = string.Join(newLine, next.Select(Path.GetFileName));
+            string summary = "Files to select and attach manually:" + newLine + newLine +
+                fileNames + newLine + newLine +
+                "The output folder(s) and normal Brave have been opened. " +
+                "Select these clips in File Explorer, drag them into ChatGPT, check that they finish uploading, and send the message yourself. " +
+                "ClipBridge has not uploaded any files.";
+            StatusLabel.Text = $"Showing {next.Length} clip(s) for manual upload. " +
+                $"{_uploadQueue.Count - _uploadPosition} remain after this group. No upload was attempted.";
+            MessageBox.Show(this, summary, "Next clips for manual attachment",
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception)
         {
             MessageBox.Show(this,
-                ex.Message + "\\nIf the ChatGPT interface or permissions prevent uploads, use Manual ChatGPT.",
-                "ClipBridge attachment", MessageBoxButton.OK, MessageBoxImage.Warning);
-            StatusLabel.Text = "Browser attachment did not complete. No files were marked attached; use the manual fallback.";
+                "Could not open Brave or the clip folder: " + ex.Message,
+                "ClipBridge browser", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-        finally { AttachButton.IsEnabled = _uploadPosition < _uploadQueue.Count; }
     }
 
     protected override async void OnClosed(EventArgs e)
@@ -349,27 +376,7 @@ public partial class MainWindow : Window
         _setupCancellation?.Cancel();
         if (_cloudflareReporter is not null)
             await _cloudflareReporter.DisposeAsync();
-        await _chatGptBrowser.DisposeAsync();
         base.OnClosed(e);
     }
 
-    private void OpenChatGptButton_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var info = new ProcessStartInfo
-            {
-                FileName = BraveBrowserLocator.FindRequired(),
-                UseShellExecute = true
-            };
-            info.ArgumentList.Add("https://chatgpt.com/");
-            Process.Start(info);
-            StatusLabel.Text = "ChatGPT opened in your regular Brave browser. Drag and attach clips manually.";
-        }
-        catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception)
-        {
-            MessageBox.Show(this, ex.Message, "Open ChatGPT in Brave",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
 }

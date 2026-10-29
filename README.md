@@ -16,7 +16,8 @@ ClipBridge is a Windows-only C# / WPF desktop application that prepares large vi
 - One-time compression before splitting to reduce total processing, plus size validation and adaptive segment-duration retries.
 - A Windows **Inno Setup installer** and portable ZIP built by GitHub Actions.
 - **Zero manual FFmpeg setup:** on first launch, ClipBridge downloads FFmpeg and FFprobe automatically and installs them for your Windows account, then reuses them on later launches.
-- **Experimental** Playwright browser-assisted ChatGPT attachment: starts Brave Browser with a separate persistent local profile, which you sign into once yourself. Attempts to attach up to three files per action. **You must check attachment status and send manually**.
+- **Normal Brave browser sign-in:** opens ChatGPT in your already-installed Brave browser with no Playwright, `--no-sandbox`, or automation profile. Sign into ChatGPT directly in Brave.
+- **Manual clip-batch handoff:** **Show next 3 clips (manual)** opens your output folder, identifies the next video files, and lets you drag or select them for upload yourself. The app does not attach files or submit messages.
 - Manual fallback: open ChatGPT and drag clips into the browser.
 
 ## B-roll cutter and gardening library (new preview feature)
@@ -37,7 +38,9 @@ Alternatively download `ClipBridge-win-x64-portable`, extract the whole director
 
 The third-party FFmpeg package is GPLv3 licensed; it is downloaded directly by the user rather than redistributed within this installer. The pinned package's SHA-256 is recorded in `src/ClipBridge/Core/DependencyInstaller.cs`. For a different FFmpeg release, update both the URL and its verified hash.
 
-Brave Browser must be installed for optional browser-assisted attachments and the **Manual ChatGPT** Brave shortcut. There is no API key. ClipBridge looks for Brave in standard Windows installation folders and registered App Paths; custom installations can set the `CLIPBRIDGE_BRAVE_PATH` environment variable to the full path of `brave.exe`. It never silently switches back to Edge. The automated Brave window uses its **own local profile** at `%LOCALAPPDATA%\\ClipBridge\\ChatGptBraveProfile`; you'll sign in once even if your regular Brave browser already has a ChatGPT login. Neither your normal Brave profile nor the previous Edge profile is modified.
+Brave Browser must be installed to open ChatGPT through ClipBridge. There is no API key. ClipBridge locates Brave in standard Windows folders or App Paths; a custom installation may set `CLIPBRIDGE_BRAVE_PATH` to the full path of `brave.exe`. The app opens the user's **normal Brave profile** through Windows, without Playwright or any custom browser flags. You can use your existing ChatGPT login or sign in normally. Google account sign-in security checks are controlled by Google; no bypass is attempted.
+
+The previous automated `%LOCALAPPDATA%\\ClipBridge\\ChatGptBraveProfile` folder is **no longer opened**. Your normal browser profile is not modified by ClipBridge. The old folder is left untouched; you may remove it manually after verifying you do not need any data from it.
 
 ## Design and AI coding guidance
 
@@ -52,7 +55,7 @@ The repository also contains [curated Impeccable and Web Quality Skills referenc
 - Windows 10/11, x64
 - .NET 10 SDK
 - An internet connection for the one-time first launch, unless FFmpeg + FFprobe are already beside the executable or in ClipBridge's tools folder
-- Brave Browser for browser-assisted attachment
+- Brave Browser for opening ChatGPT (file attachments are manual)
 
 ```powershell
 dotnet restore .\src\ClipBridge\ClipBridge.csproj
@@ -83,20 +86,20 @@ Cloudflare monitoring is **disabled by default**. Do not paste a Cloudflare acco
 4. Choose **Fast split** first. Check every numbered part plays and retains its audio.
 5. Test **Compress — balanced (CRF 28)** with the same file, comparing total size and quality. Compression can be slower and may not always make already-compressed videos smaller.
 6. Try a larger video, then a 15 GB original. Confirm the disk estimate, percentage updates, cancellation, and recovery on app restart. Reusing an already completed input should not re-encode it. Leave enough free disk space for intermediate compressed content and clips.
-7. Click **Sign in to ChatGPT (Brave)**; sign in normally in the dedicated Brave window and open the intended conversation.
-8. Click **Attach next 3 clips (experimental)**. Check inside Brave that ChatGPT accepted them, and **send the message manually**.
-9. If that fails or ChatGPT blocks the file type, click **Manual ChatGPT** and use the normal browser attachment control.
+7. Click **Open ChatGPT in Brave**. Your normal Brave window opens without automation flags. Sign into ChatGPT if needed.
+8. Click **Show next 3 clips (manual)** to open the output folder and see the next three file names. Drag or choose those files in the ChatGPT conversation; confirm upload acceptance and **send the message yourself**.
+9. If ChatGPT cannot accept a file, verify its file size/type and use ChatGPT's normal attachment control. ClipBridge does not bypass upload restrictions.
 
 ## Limitations and privacy
 
-- Browser automation is **not an OpenAI-supported integration** and may break with a ChatGPT UI change. Calling the file input does **not confirm the upload succeeded**; inspect the actual ChatGPT page.
-- No background upload and no automatic Send. Each batch requires a user click.
+- Automated browser attachment has been removed because Playwright-launched Brave can trigger the browser's insecure-flag warning and Google may reject automated sign-in. ClipBridge now opens normal Brave and provides a **manual** clip selection workflow.
+- ClipBridge does not upload attachments or send ChatGPT messages. The user must select files, wait for ChatGPT to accept them, and send the message.
 - File upload quotas, platform availability, and accepted video formats are controlled by ChatGPT. ClipBridge cannot bypass them.
-- A separate Brave browser profile is stored only on the PC at `%LOCALAPPDATA%\ClipBridge\ChatGptBraveProfile`. Never upload this folder or authentication data to GitHub. ClipBridge does **not** import the former Edge automation profile.
+- The previous `%LOCALAPPDATA%\ClipBridge\ChatGptBraveProfile` browser profile is no longer used or accessed by the app. Do not upload any browser profile or authentication data to GitHub.
 - Sparse keyframes, unusual codecs, or abrupt bitrate spikes can cause segments to exceed the size cap even after retries; in that case the app reports failure.
 - Fast mode is lossless stream-copy; compressed mode is intentionally lossy. Source files are preserved.
 - On first launch, ClipBridge downloads FFmpeg directly from a third-party provider; no original videos or credentials are uploaded as part of that setup. A network connection and free local disk space are needed for the one-time download.
-- Brave must be installed to use managed sign-in, experimental attachment and the manual Brave shortcut. If unavailable, open ChatGPT yourself in a browser and drag files in manually.
+- Brave must be installed for the in-app **Open ChatGPT in Brave** shortcut. You may always open ChatGPT in a browser yourself and drag clips into the conversation.
 - Interrupted videos are requeued, but resume **from the beginning of that video**; only completed output sets are reused. There is no checkpointed mid-video resume yet.
 - Cloudflare KV and both Worker secrets must be configured by the account owner before monitoring can connect; the app can't deploy or configure these credentials itself.
 - Temporary transcodes use local disk and may be sizeable. Cancellation may leave partial output clips.

@@ -123,15 +123,14 @@
                 <Button Content="Open output folder" Click="OpenOutputButton_Click" />
                 <Button x:Name="BRollButton" Content="B-roll cutter &amp; library"
                         Click="BRollButton_Click" />
-                <Button x:Name="ChatGptLoginButton" Content="Sign in to ChatGPT (Brave)"
+                <Button x:Name="ChatGptLoginButton" Content="Open ChatGPT in Brave"
                         Click="ChatGptLoginButton_Click" />
-                <Button x:Name="AttachButton" Content="Attach next 3 clips (experimental)" IsEnabled="False"
+                <Button x:Name="AttachButton" Content="Show next 3 clips (manual)" IsEnabled="False"
                         Click="AttachButton_Click" />
-                <Button Content="Manual ChatGPT (Brave)" Click="OpenChatGptButton_Click" />
             </WrapPanel>
             <TextBlock Text="For reusable garden footage, open B-roll cutter &amp; library. Mark In / Out, tag planting, harvesting, pruning and more, then filter saved clips with checkboxes."
                        Foreground="#A4F4DC" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0" />
-            <TextBlock Text="Browser automation only attempts to attach clips. Review the attachment status in ChatGPT and press Send yourself. Login data stays in a separate local Brave profile."
+            <TextBlock Text="ClipBridge opens your normal Brave browser without automation or special security flags. Use Show next 3 clips to locate files; select and attach them manually in ChatGPT. No uploads or sends happen automatically."
                        Foreground="#94A3B8" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0" />
         </StackPanel>
     </Grid>
