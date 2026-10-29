@@ -5,6 +5,7 @@
 (() => {
   const API = "http://127.0.0.1:38419";
   let armed = false;
+  let armedConversation = "";
   let busy = false;
   let lastStatus = "";
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -12,6 +13,7 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "clipbridge-arm") {
       armed = true;
+      armedConversation = location.pathname + location.search;
       report("Armed in this ChatGPT tab. Waiting for local ClipBridge clips.");
       sendResponse({ ok: true });
     }
@@ -44,6 +46,11 @@
 
   async function poll() {
     if (busy || !armed || document.visibilityState !== "visible") return;
+    if (armedConversation !== location.pathname + location.search) {
+      armed = false;
+      await report("ChatGPT conversation changed. Auto attach stopped; arm the intended tab again.");
+      return;
+    }
     busy = true;
     let item = null;
     let key = null;
