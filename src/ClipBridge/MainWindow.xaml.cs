@@ -23,6 +23,8 @@ public partial class MainWindow : Window
     private readonly ChatGptBrowser _chatGptBrowser = new();
     private readonly List<string> _uploadQueue = [];
     private int _uploadPosition;
+    private readonly JobJournal _journal = new();
+    private CloudflareStatusReporter? _cloudflareReporter;
 
     public MainWindow()
     {
@@ -31,6 +33,11 @@ public partial class MainWindow : Window
         Loaded += Window_Loaded;
         OutputFolderBox.Text = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "ClipBridge");
+        var unfinished = _journal.RecoverableInputs();
+        AddVideos(unfinished);
+        if (unfinished.Count > 0)
+            StatusLabel.Text = $"Restored {unfinished.Count} unfinished source video(s). " +
+                "Processing will restart for those sources; any previously completed jobs are reused.";
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -131,6 +138,9 @@ public partial class MainWindow : Window
 
         _cancellation = new CancellationTokenSource();
         SetBusy(true);
+        Progress.Value = 0;
+        ProgressPercentLabel.Text = "0%";
+        ProgressInfoLabel.Text = "Starting batch...";
         _uploadQueue.Clear();
         _uploadPosition = 0;
         AttachButton.IsEnabled = false;
@@ -146,24 +156,94 @@ public partial class MainWindow : Window
             var splitter = new VideoSplitter();
             await splitter.VerifyToolsAsync(_cancellation.Token);
 
+            if (_cloudflareReporter is not null)
+            {
+                await _cloudflareReporter.DisposeAsync();
+                _cloudflareReporter = null;
+            }
+            if (CloudflareEnabledBox.IsChecked == true)
+            {
+                _cloudflareReporter = new CloudflareStatusReporter(
+                    CloudflareUrlBox.Text, CloudflareTokenBox.Password,
+                    status => Dispatcher.BeginInvoke(new Action(() =>
+                        CloudflareStatusLabel.Text = status)));
+                _cloudflareReporter.Start();
+                CloudflareStatusLabel.Text = "Cloudflare: connecting (status only, no videos)";
+            }
+            else CloudflareStatusLabel.Text = "Cloudflare: disabled; no video data sent";
+
             foreach (string file in files)
             {
                 _cancellation.Token.ThrowIfCancellationRequested();
                 string current = Path.GetFileName(file);
+                var sourceInfo = new FileInfo(file);
+                string jobId = Guid.NewGuid().ToString("N");
+                double sizeGb = Math.Round(sourceInfo.Length / 1_000_000_000.0, 3);
                 StatusLabel.Text = $"Splitting {completed + 1}/{files.Length}: {current}";
                 VideoList.SelectedItem = file;
-                SplitResult result = await splitter.SplitAsync(file, OutputFolderBox.Text, targetMb, compress, crf,
-                    _cancellation.Token);
-                if (!result.AllWithinLimit)
-                    throw new InvalidOperationException(
-                        $"Some segments of {current} exceed {targetMb} MB. Try a smaller target or an input with more frequent keyframes. Output: {result.OutputDirectory}");
-                _uploadQueue.AddRange(Directory.EnumerateFiles(result.OutputDirectory, "part_*.*")
-                    .Where(path => SupportedExtensions.Contains(Path.GetExtension(path)))
-                    .OrderBy(path => path, StringComparer.Ordinal));
-                AttachButton.IsEnabled = _uploadQueue.Count > 0;
-                completed++;
-                Progress.Value = completed * 100.0 / files.Length;
-                StatusLabel.Text = $"Finished {completed}/{files.Length}: {result.Parts} clips saved to {result.OutputDirectory}";
+                SplitResult? result = null;
+                string journalOutput = "";
+                try
+                {
+                    result = _journal.FindCompleted(file, targetMb, compress, crf);
+                    if (result is not null)
+                    {
+                        StatusLabel.Text = $"Reusing validated clips from {current}.";
+                        ProgressInfoLabel.Text = "Completed clips recovered from previous run.";
+                    }
+                    else
+                    {
+                        VideoSplitter.CheckDiskSpace(OutputFolderBox.Text, sourceInfo.Length, compress);
+                        _journal.SetState(file, targetMb, compress, crf, "", "processing");
+                        _cloudflareReporter?.Publish(new CloudflareStatus(jobId, current,
+                            "processing", 0, 0, 0, sizeGb));
+                        int processedBefore = completed;
+                        var update = new Progress<VideoProgress>(p =>
+                        {
+                            double batchPct = 100 * (processedBefore + p.Percent / 100.0) / files.Length;
+                            Progress.Value = batchPct;
+                            ProgressPercentLabel.Text = $"{batchPct:0}%";
+                            ProgressInfoLabel.Text = $"{p.Phase} · {p.Percent:0}% of current video";
+                            StatusLabel.Text = $"{current}: {p.Phase} · {p.ClipsDone} clips completed";
+                            _cloudflareReporter?.Publish(new CloudflareStatus(jobId, current,
+                                "processing", p.Percent, p.ClipsDone, p.ClipsTotal, sizeGb));
+                        });
+                        result = await splitter.SplitAsync(file, OutputFolderBox.Text,
+                            targetMb, compress, crf, update, _cancellation.Token);
+                        journalOutput = result.OutputDirectory;
+                        if (!result.AllWithinLimit)
+                            throw new InvalidOperationException(
+                                $"Some segments of {current} exceed {targetMb} MB. " +
+                                $"Try a smaller target or a video with more frequent keyframes. Output: {result.OutputDirectory}");
+                        _journal.SetState(file, targetMb, compress, crf, result.OutputDirectory, "completed");
+                    }
+
+                    _uploadQueue.AddRange(Directory.EnumerateFiles(result.OutputDirectory, "part_*.*")
+                        .Where(path => SupportedExtensions.Contains(Path.GetExtension(path)))
+                        .OrderBy(path => path, StringComparer.Ordinal));
+                    AttachButton.IsEnabled = _uploadQueue.Count > 0;
+                    completed++;
+                    Progress.Value = completed * 100.0 / files.Length;
+                    ProgressPercentLabel.Text = $"{Progress.Value:0}%";
+                    ProgressInfoLabel.Text = $"{result.Parts} clips verified for {current}";
+                    _cloudflareReporter?.Publish(new CloudflareStatus(jobId, current,
+                        "completed", 100, result.Parts, result.Parts, sizeGb));
+                    StatusLabel.Text = $"Finished {completed}/{files.Length}: {result.Parts} clips saved to {result.OutputDirectory}";
+                }
+                catch (OperationCanceledException)
+                {
+                    _journal.SetState(file, targetMb, compress, crf, journalOutput, "cancelled");
+                    _cloudflareReporter?.Publish(new CloudflareStatus(jobId, current,
+                        "cancelled", 0, 0, 0, sizeGb));
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _journal.SetState(file, targetMb, compress, crf, journalOutput, "failed", ex.Message);
+                    _cloudflareReporter?.Publish(new CloudflareStatus(jobId, current,
+                        "failed", 0, 0, 0, sizeGb));
+                    throw;
+                }
             }
             StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open ChatGPT in Edge to attach them.";
         }
@@ -192,7 +272,10 @@ public partial class MainWindow : Window
         TargetSizeBox.IsEnabled = !busy;
         ModeBox.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
-        Progress.IsIndeterminate = busy;
+        Progress.IsIndeterminate = busy && _setupCancellation is not null;
+        CloudflareEnabledBox.IsEnabled = !busy;
+        CloudflareUrlBox.IsEnabled = !busy;
+        CloudflareTokenBox.IsEnabled = !busy;
         if (!busy) Progress.IsIndeterminate = false;
     }
 
@@ -257,6 +340,8 @@ public partial class MainWindow : Window
     {
         _cancellation?.Cancel();
         _setupCancellation?.Cancel();
+        if (_cloudflareReporter is not null)
+            await _cloudflareReporter.DisposeAsync();
         await _chatGptBrowser.DisposeAsync();
         base.OnClosed(e);
     }

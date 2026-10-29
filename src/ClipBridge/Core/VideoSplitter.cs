@@ -7,6 +7,7 @@ using System.Text.Json;
 namespace ClipBridge.Core;
 
 public sealed record SplitResult(string OutputDirectory, int Parts, bool AllWithinLimit);
+public sealed record VideoProgress(double Percent, string Phase, int ClipsDone = 0, int ClipsTotal = 0);
 
 /// <summary>
 /// Lossless (stream-copy) video splitter. Uses the FFmpeg segment muxer so
@@ -25,9 +26,11 @@ public sealed class VideoSplitter
     }
 
     public async Task<SplitResult> SplitAsync(string inputPath, string outputRoot, int targetMb,
-        bool compress, int crf, CancellationToken cancellationToken)
+        bool compress, int crf, IProgress<VideoProgress>? progress,
+        CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath)) throw new FileNotFoundException("Video file not found.", inputPath);
+        CheckDiskSpace(outputRoot, new FileInfo(inputPath).Length, compress);
         if (crf < 18 || crf > 36) throw new ArgumentOutOfRangeException(nameof(crf));
         // 1 MB = 1,000,000 bytes. Allow a margin for muxing overhead.
         long hardLimit = (long)targetMb * 1_000_000L;
@@ -38,6 +41,10 @@ public sealed class VideoSplitter
         string outputDirectory = Path.Combine(outputRoot,
             $"{safeName}_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N")[..6]}");
         Directory.CreateDirectory(outputDirectory);
+        var (originalDuration, _) = await ProbeAsync(inputPath, cancellationToken);
+        if (originalDuration <= 0 || !double.IsFinite(originalDuration))
+            throw new InvalidOperationException("FFprobe could not determine the video duration.");
+        progress?.Report(new VideoProgress(0, "Preparing video"));
 
         string workingFile = inputPath;
         string? intermediate = null;
@@ -48,7 +55,7 @@ public sealed class VideoSplitter
                 intermediate = Path.Combine(outputDirectory, "_compressed_working_file.mp4");
                 // Re-encode once. After that, use the fast segmenter to cut the
                 // smaller compressed file, without recompressing every segment.
-                await RunProcessAsync(_ffmpeg,
+                await RunFfmpegWithProgressAsync(_ffmpeg,
                 [
                     "-hide_banner", "-nostdin", "-y", "-loglevel", "error",
                     "-i", inputPath,
@@ -58,7 +65,7 @@ public sealed class VideoSplitter
                     "-pix_fmt", "yuv420p",
                     "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
                     intermediate
-                ], cancellationToken);
+                ], originalDuration, 0, 60, "Compressing", progress, cancellationToken);
                 workingFile = intermediate;
             }
 
@@ -74,6 +81,7 @@ public sealed class VideoSplitter
             await using (var target = new FileStream(destination, FileMode.CreateNew, FileAccess.Write,
                 FileShare.None, 1024 * 1024, FileOptions.Asynchronous))
                 await source.CopyToAsync(target, cancellationToken);
+            progress?.Report(new VideoProgress(100, "Completed", 1, 1));
             return new SplitResult(outputDirectory, 1, true);
         }
 
@@ -82,6 +90,7 @@ public sealed class VideoSplitter
             throw new InvalidOperationException("FFprobe could not determine the video duration.");
         double bytesPerSecond = Math.Max(1.0, size / duration);
         double initialSegmentSeconds = Math.Max(0.25, planningLimit / bytesPerSecond);
+        int estimatedTotal = Math.Max(1, (int)Math.Ceiling((double)size / planningLimit));
         string outputPattern = Path.Combine(outputDirectory, "part_%04d.mp4");
 
         // Variable bitrate footage may need shorter time segments. Retry
@@ -97,7 +106,7 @@ public sealed class VideoSplitter
             segmentSeconds = Math.Max(0.15, segmentSeconds);
             string length = segmentSeconds.ToString("0.###", CultureInfo.InvariantCulture);
 
-            await RunProcessAsync(_ffmpeg,
+            await RunFfmpegWithProgressAsync(_ffmpeg,
             [
                 "-hide_banner", "-nostdin", "-y", "-loglevel", "error",
                 "-i", workingFile,
@@ -105,14 +114,21 @@ public sealed class VideoSplitter
                 "-c", "copy", "-f", "segment", "-segment_format", "mp4",
                 "-segment_time", length, "-segment_start_number", "1", "-reset_timestamps", "1",
                 outputPattern
-            ], cancellationToken);
+            ], duration, compress ? 60 : 0, 100,
+               attempt == 0 ? "Splitting" : $"Retrying smaller splits ({attempt + 1}/6)",
+               progress, cancellationToken, outputDirectory, estimatedTotal);
 
             FileInfo[] segments = new DirectoryInfo(outputDirectory).GetFiles("part_*.mp4")
                 .OrderBy(x => x.Name, StringComparer.Ordinal).ToArray();
             if (segments.Length == 0)
                 throw new InvalidOperationException("FFmpeg did not produce any video segments.");
             if (segments.All(x => x.Length > 0 && x.Length <= hardLimit))
+            {
+                progress?.Report(new VideoProgress(100, "Completed", segments.Length, segments.Length));
                 return new SplitResult(outputDirectory, segments.Length, true);
+            }
+            progress?.Report(new VideoProgress(compress ? 60 : 0,
+                "Size check failed: retrying smaller segments", segments.Length, estimatedTotal));
         }
 
         FileInfo[] finalSegments = new DirectoryInfo(outputDirectory).GetFiles("part_*.mp4");
@@ -126,6 +142,69 @@ public sealed class VideoSplitter
                 try { File.Delete(intermediate); } catch (IOException) { /* Keep visible until next cleanup. */ }
             }
         }
+    }
+
+    public static void CheckDiskSpace(string outputRoot, long inputBytes, bool compress)
+    {
+        Directory.CreateDirectory(outputRoot);
+        string fullPath = Path.GetFullPath(outputRoot);
+        string? driveRoot = Path.GetPathRoot(fullPath);
+        if (string.IsNullOrEmpty(driveRoot)) return;
+        DriveInfo drive;
+        try { drive = new DriveInfo(driveRoot); }
+        catch (Exception ex) when (ex is ArgumentException or IOException) { return; }
+        if (!drive.IsReady || drive.DriveType is not (DriveType.Fixed or DriveType.Removable)) return;
+
+        // Compression needs a temporary full-length transcode plus output clips.
+        // Conservative estimate rather than a guarantee (output size can exceed input).
+        double factor = compress ? 2.5 : 1.2;
+        long estimated = (long)Math.Ceiling(inputBytes * factor) + 512L * 1024 * 1024;
+        if (drive.AvailableFreeSpace < estimated)
+            throw new IOException($"Not enough free disk space on {drive.Name}. " +
+                $"Estimated requirement: {estimated / 1_000_000_000.0:0.0} GB; " +
+                $"available: {drive.AvailableFreeSpace / 1_000_000_000.0:0.0} GB. " +
+                "Select another output folder or free up disk space.");
+    }
+
+    private static async Task RunFfmpegWithProgressAsync(
+        string exe, IReadOnlyList<string> arguments, double duration,
+        double start, double end, string phase, IProgress<VideoProgress>? progress,
+        CancellationToken ct, string? segmentDirectory = null, int estimatedClips = 0)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = exe, UseShellExecute = false, CreateNoWindow = true,
+            RedirectStandardOutput = true, RedirectStandardError = true
+        };
+        startInfo.ArgumentList.Add("-progress");
+        startInfo.ArgumentList.Add("pipe:1");
+        startInfo.ArgumentList.Add("-nostats");
+        foreach (string arg in arguments) startInfo.ArgumentList.Add(arg);
+        using var process = new Process { StartInfo = startInfo };
+        if (!process.Start()) throw new IOException($"Cannot start {exe}.");
+        using var cancellation = ct.Register(() =>
+        {
+            try { if (!process.HasExited) process.Kill(entireProcessTree: true); }
+            catch (InvalidOperationException) { }
+        });
+        Task<string> errors = process.StandardError.ReadToEndAsync(ct);
+        string? line;
+        while ((line = await process.StandardOutput.ReadLineAsync(ct)) is not null)
+        {
+            if (!line.StartsWith("out_time=", StringComparison.Ordinal)) continue;
+            if (!TimeSpan.TryParse(line["out_time=".Length..],
+                CultureInfo.InvariantCulture, out TimeSpan time)) continue;
+            double fraction = Math.Clamp(time.TotalSeconds / duration, 0, 1);
+            int finishedClips = segmentDirectory is not null && Directory.Exists(segmentDirectory)
+                ? Math.Max(0, Directory.EnumerateFiles(segmentDirectory, "part_*.mp4").Count() - 1)
+                : 0;
+            progress?.Report(new VideoProgress(start + fraction * (end - start), phase,
+                finishedClips, estimatedClips));
+        }
+        await process.WaitForExitAsync(ct);
+        string stderr = await errors;
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException($"FFmpeg exited with {process.ExitCode}: " + stderr.Trim());
     }
 
     private async Task<(double duration, long size)> ProbeAsync(string inputPath, CancellationToken ct)
