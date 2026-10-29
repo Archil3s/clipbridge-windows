@@ -1,0 +1,37 @@
+# Releasing ClipBridge
+
+## Versioning
+
+Use `MAJOR.MINOR.PATCH` version numbers:
+- Patch: fixes with no new user-facing features.
+- Minor: backward-compatible features.
+- Major: intentional breaking changes.
+
+Keep `src/ClipBridge/ClipBridge.csproj` and `installer/ClipBridge.iss` version values identical. GitHub CI checks this automatically.
+
+## Development workflow
+
+1. Create a feature branch; do not commit directly to `main` for complex work.
+2. Add tests and docs for every functional change.
+3. Update the `[Unreleased]` section of `CHANGELOG.md` and `ROADMAP.md`.
+4. Open a pull request. Run Windows build and Cloudflare dashboard checks.
+5. Review and merge.
+
+## Shipping a tested version
+
+1. Perform a Windows smoke test: first-run dependency install, 1 GB then 15 GB source, audio playback, size checks, cancellation, restart, disk-full behavior and Cloudflare opt-in/off.
+2. Update the release section of CHANGELOG.md and reconcile known limitations.
+3. Ensure versions match, and run GitHub Actions green.
+4. Create an annotated version tag and push it:
+   ```bash
+   git tag -a v0.4.0 -m "ClipBridge v0.4.0"
+   git push origin v0.4.0
+   ```
+5. The tagged GitHub Action publishes a Windows portable ZIP, Inno Setup installer and a GitHub Release with automatically generated change notes.
+6. Verify artifacts are present and downloadable, then test installation from the Release.
+
+**Do not tag an untested preview as stable.** Builds from Actions are preview artifacts. The workflow does not create a release until someone deliberately pushes a matching version tag.
+
+## Security
+
+Use GitHub Secrets only for authorised deployment credentials. Cloudflare Worker `INGEST_TOKEN` and `VIEW_TOKEN` must be created in Cloudflare, not committed. Uploaded video files, browser profiles and local job journals remain outside Git.
