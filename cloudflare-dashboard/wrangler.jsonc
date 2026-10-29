@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "clipbridge-dashboard",
+  "name": "clipbridge-windows",
   "main": "src/index.js",
   "compatibility_date": "2026-10-29",
   "workers_dev": true,

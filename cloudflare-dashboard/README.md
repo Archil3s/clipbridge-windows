@@ -1,6 +1,6 @@
 # ClipBridge Dashboard — separate Cloudflare Worker
 
-This is a **new, independent website** called `clipbridge-dashboard` under the user's Cloudflare account. It does not modify or reuse the existing garden website, Worker, or routes.
+This is an **independent ClipBridge dashboard webpage** deployed to the existing fresh Cloudflare Worker project `clipbridge-windows` under the user's Cloudflare account. It does not modify or reuse the existing garden website, Worker, or routes.
 
 ## What works now
 - Responsive Cloudflare webpage with desktop + phone layout.
@@ -13,10 +13,10 @@ This is a **new, independent website** called `clipbridge-dashboard` under the u
 ## Deploy the independent webpage from GitHub
 1. Log in to Cloudflare → **Workers & Pages** → **Create application** → **Import a repository**.
 2. Select GitHub repository `Archil3s/clipbridge-windows` on the `main` branch.
-3. Use project / Worker name **`clipbridge-dashboard`**.
+3. Use the already-created Cloudflare Worker named **`clipbridge-windows`**, which matches `wrangler.jsonc`.
 4. Set the project's **root directory** to **`cloudflare-dashboard`** (within this repository).
 5. Leave build command blank, set deploy command to `npx wrangler deploy`.
-6. Deploy. Cloudflare assigns this Worker its **own** address, typically `clipbridge-dashboard.<YOUR-SUBDOMAIN>.workers.dev`. **The actual address is not known until deployed.**
+6. Deploy. Open the actual Worker URL shown in Cloudflare. Do not rely on an assumed URL. If it still says **Hello world**, check **Settings → Build → Root directory** is `cloudflare-dashboard`, save, and retry a production deploy.
 
 The default site safely shows **Not connected**. The Preview demo button is sample data only.
 
@@ -24,11 +24,11 @@ Cloudflare Git integration can deploy changes made to `main` automatically after
 
 ## Turn on real-time data (additional setup, not required to see the site)
 
-1. Create a **Workers KV namespace** in Cloudflare and bind it as **`STATUS_STORE`** to the new Worker. Keep the binding in the dashboard or record the namespace ID in a Wrangler configuration for repeatable deployments.
+1. Create a **Workers KV namespace** in Cloudflare and bind it as **`STATUS_STORE`** to the ClipBridge Worker. Keep the binding in the dashboard or record the namespace ID in a Wrangler configuration for repeatable deployments.
 2. Add two **different, randomly generated runtime secrets**, each at least 32 characters:
    - `VIEW_TOKEN`: used only by the browser dashboard to read status.
    - `INGEST_TOKEN`: used only by ClipBridge Windows to submit status.
-3. Ideally protect the entire Worker with **Cloudflare Access** (Workers & Pages → select `clipbridge-dashboard` → Access → Protect this Worker, All traffic), allowing only your login.
+3. Ideally protect the entire Worker with **Cloudflare Access** (Workers & Pages → select `clipbridge-windows` → Access → Protect this Worker, All traffic), allowing only your login.
 4. Configure the Windows client to send an authenticated POST every few seconds. **That Windows status-sending integration has not been implemented yet.** It must never send the video itself or transmit ChatGPT cookies.
 
 The status endpoint is intentionally disabled until both KV and the relevant token exist. `POST` is never available without an ingest secret and KV binding. `GET` is never available without a viewer secret and KV binding.
