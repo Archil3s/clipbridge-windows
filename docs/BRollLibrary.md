@@ -35,7 +35,7 @@ Each MP4 has a small adjacent `.broll.json` file storing its title, original *fi
 ## Current limitations
 
 - Gardening classification is **manual**: the app cannot automatically identify planting, harvesting or gardening objects from the visual content. You choose the correct tags when saving.
-- Editing the tags on an existing saved MP4 and batch-tagging older clips are not implemented yet.
+- You can edit tags on a selected existing MP4. Bulk-tagging multiple selected clips is not implemented yet.
 - The Windows MediaElement preview depends on codecs available on the computer. FFmpeg can support more source formats than Windows preview, so manual timestamps remain available.
 - The current clip export uses a quality-oriented H.264/AAC re-encode for accurate boundaries. Export time and output size depend on source footage and PC performance.
 - No multi-clip timeline, auto-detected highlights, cloud synchronisation or AI scene recognition yet.
