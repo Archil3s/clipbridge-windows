@@ -11,6 +11,11 @@ test("disconnected state is honest and sample is labelled", async ({ page }) => 
   await expect(page.locator("#demoMarker")).toBeVisible();
   await expect(page.locator("#demoMarker")).toContainText("not your computer");
   await expect(page.locator("#progressText")).toHaveText("68%");
+  await expect(page.locator("#metricProgress")).toHaveText("68%");
+  await expect(page.locator("#metricProgressTag")).toHaveText("SAMPLE");
+  await expect(page.locator("#metricClips")).toHaveText("26");
+  await expect(page.locator("#progressTrend")).toHaveAttribute("d", /L/);
+  await expect(page.locator("#clipsTrend")).toHaveAttribute("d", /L/);
   await expect(page.locator("#ringValue")).toHaveText("68%");
   await expect(page.locator("#ringHelp")).toContainText("not your PC");
   await expect(page.locator("#desktopConnection")).toHaveText("Sample, not connected");
@@ -19,6 +24,9 @@ test("disconnected state is honest and sample is labelled", async ({ page }) => 
   await expect(page.locator("#demoMarker")).toBeHidden();
   await expect(page.locator("#stateTitle")).toHaveText("Not connected");
   await expect(page.locator("#progressText")).toHaveText("Not reported");
+  await expect(page.locator("#metricProgress")).toHaveText("—");
+  await expect(page.locator("#metricClips")).toHaveText("—");
+  await expect(page.locator("#progressTrend")).toHaveAttribute("d", "");
 });
 
 test("viewer token errors stay visible instead of falsely connecting", async ({ page }) => {
@@ -63,6 +71,9 @@ test("live and stale data show truthful states", async ({ page }) => {
   await expect(page.locator("#stateTitle")).toHaveText("Desktop reporting");
   await expect(page.locator("#jobName")).toHaveText("test_garden.mp4");
   await expect(page.locator("#progressText")).toHaveText("42%");
+  await expect(page.locator("#metricProgress")).toHaveText("42%");
+  await expect(page.locator("#metricProgressTag")).toHaveText("REPORTED");
+  await expect(page.locator("#metricClips")).toHaveText("4");
   await expect(page.locator("#ringValue")).toHaveText("42%");
   await expect(page.locator("#ringHelp")).toContainText("Latest video");
   await expect(page.locator("#jobClipsFact")).toHaveText("4 / 10");
@@ -98,6 +109,7 @@ test("layout has no sideways scroll and controls remain usable", async ({ page }
     );
     expect(overflow, "horizontal overflow at " + width + "px").toBeLessThanOrEqual(1);
     await expect(page.locator("#connectBtn")).toBeVisible();
+    await expect(page.locator(".rail-nav")).toBeVisible();
   }
   await page.setViewportSize({ width: 390, height: 780 });
   await page.locator("#setupBtn").click();
@@ -184,6 +196,8 @@ test("live dashboard hides setup steps and manual refresh requests fresh state",
   progress = 60;
   await page.locator("#refreshBtn").click();
   await expect(page.locator("#progressText")).toHaveText("60%");
+  await expect(page.locator("#metricProgress")).toHaveText("60%");
+  await expect(page.locator("#progressTrend")).toHaveAttribute("d", /L/);
   expect(requests).toBeGreaterThanOrEqual(2);
   await expect(page.locator("#desktopConnection")).toHaveText("Reporting");
 });
