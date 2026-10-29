@@ -9,11 +9,11 @@
   let lastStatus = "";
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  chrome.runtime.onMessage.addListener(message => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "clipbridge-arm") {
       armed = true;
       report("Armed in this ChatGPT tab. Waiting for local ClipBridge clips.");
-      return Promise.resolve({ ok: true });
+      sendResponse({ ok: true });
     }
   });
 
