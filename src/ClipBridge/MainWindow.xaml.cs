@@ -268,7 +268,7 @@ public partial class MainWindow : Window
                     throw;
                 }
             }
-            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open normal Brave, then choose clips to attach manually.";
+            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open normal Brave and arm the batch extension, or choose clips for manual attachment.";
         }
         catch (OperationCanceledException)
         {
@@ -326,7 +326,7 @@ public partial class MainWindow : Window
         try
         {
             _chatGptBrowser.Open();
-            StatusLabel.Text = "Opened ChatGPT in normal Brave without browser automation. Sign in there, then attach clips manually.";
+            StatusLabel.Text = "Opened ChatGPT in normal Brave without browser automation. Sign in there, then arm the batch extension or attach manually.";
         }
         catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception)
         {

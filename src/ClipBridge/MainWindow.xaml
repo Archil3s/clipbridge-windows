@@ -18,7 +18,7 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
             <DockPanel>
-                <TextBlock Text="v0.4.0 — preview" Foreground="#7DD3FC"
+                <TextBlock Text="v0.5.0 — preview" Foreground="#7DD3FC"
                            FontSize="12" DockPanel.Dock="Right" VerticalAlignment="Center" />
                 <TextBlock FontSize="30" FontWeight="Bold" Text="ClipBridge" />
             </DockPanel>
@@ -64,9 +64,9 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Maximum clip size (MB)" VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <TextBox x:Name="TargetSizeBox" Grid.Column="1" Text="400" VerticalContentAlignment="Center" />
+                    <TextBox x:Name="TargetSizeBox" Grid.Column="1" Text="100" VerticalContentAlignment="Center" />
                     <TextBlock Text="Mode" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <ComboBox x:Name="ModeBox" Grid.Column="4" SelectedIndex="0" Padding="6"
+                    <ComboBox x:Name="ModeBox" Grid.Column="4" SelectedIndex="3" Padding="6"
                               Background="#0F172A" Foreground="#111827">
                         <ComboBoxItem Content="Fast split (no re-encoding)" />
                         <ComboBoxItem Content="Compress — higher quality (CRF 24)" />
@@ -131,12 +131,12 @@
             </WrapPanel>
             <TextBlock Text="For reusable garden footage, open B-roll cutter &amp; library. Mark In / Out, tag planting, harvesting, pruning and more, then filter saved clips with checkboxes."
                        Foreground="#A4F4DC" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0" />
-            <TextBlock Text="Open ChatGPT in normal Brave to sign in. An optional extension can attach video clips automatically, but you must review the attachments and send messages yourself."
+            <TextBlock Text="Open ChatGPT in normal Brave to sign in. The optional extension offers clip batches together. Auto-send is disabled by default; enable it explicitly in the extension to send ready batches in the armed chat."
                        Foreground="#94A3B8" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0" />
             <Border Margin="0,12,0,0" Padding="12" BorderThickness="1" BorderBrush="#36624E"
                     CornerRadius="10" Background="#14271E">
                 <StackPanel>
-                    <TextBlock Text="Brave auto-attach (optional)" FontWeight="Bold" Foreground="#A4F4DC" />
+                    <TextBlock Text="Brave batch uploads (optional)" FontWeight="Bold" Foreground="#A4F4DC" />
                     <CheckBox x:Name="AutoAttachEnabledBox"
                               Content="Allow ClipBridge to offer prepared clips to the Brave extension"
                               Checked="AutoAttachEnabledBox_Checked" Unchecked="AutoAttachEnabledBox_Unchecked"
@@ -148,6 +148,8 @@
                                 Click="NextBridgeBatchButton_Click" IsEnabled="False" />
                         <Button Content="Retry unattempted transfers" Click="RetryBridgeButton_Click" />
                     </WrapPanel>
+                    <TextBlock Text="Set batch size and optional auto-send in the extension. New jobs default to 100 MB clips and smaller-file compression. The website may enforce lower limits."
+                               FontSize="11" Foreground="#C4D7CD" TextWrapping="Wrap" Margin="0,8,0,0"/>
                     <TextBlock x:Name="BraveBridgeStatusLabel"
                                Text="Disabled. Enable the bridge and install the ClipBridge Brave extension."
                                FontSize="11" Foreground="#C4D7CD" TextWrapping="Wrap" Margin="0,8,0,0"/>

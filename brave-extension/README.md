@@ -1,47 +1,61 @@
-# ClipBridge Auto Attach — Brave setup and recovery
+# ClipBridge Brave batch uploads (extension 0.3.0)
 
-## Install and pair once
+Requires ClipBridge Windows 0.5.0 or later. Install the Windows app and extension from the same successful build. This uses your normal signed-in Brave browser, with no login automation or sandbox changes.
 
-1. Download `ClipBridge-Installer` and `ClipBridge-Brave-Extension` from the same successful [Windows build](https://github.com/Archil3s/clipbridge-windows/actions/workflows/windows-build.yml). GitHub requires sign-in to download Actions artifacts. Extract both ZIPs and run `ClipBridge-Setup.exe`.
-2. Keep the extracted extension folder somewhere permanent. It must contain `manifest.json`, `background.js`, `content.js`, `popup.js`, and `popup.html`.
-3. Open your normally installed Brave. In `brave://extensions`, enable Developer mode, choose **Load unpacked**, and select that folder. Pin ClipBridge from Brave's extensions menu.
-4. Open ChatGPT in normal Brave and sign in yourself, including Google sign-in if desired. ClipBridge supplies no browser flags, automation profile, cookies, or login automation.
-5. In ClipBridge Windows, enable **Allow ClipBridge to offer prepared clips to the Brave extension**, then choose **Copy extension pairing key**.
-6. In the extension popup, paste the key, check **Enable automatic attachments for the armed tab**, and choose **Save connection settings**. The enable checkbox is required; arming cannot silently enable it.
-7. Open the intended ChatGPT conversation. Refresh it after first installing/updating the extension. Open ChatGPT's attachment menu if necessary so a compatible file input exists. Choose **Arm / continue in this tab** in the popup.
+## Update and pair
 
-## Test one small video
+1. Close ClipBridge when no local job is running, then install the new Windows build. Your source videos, saved B-roll metadata and pairing key are preserved.
+2. Extract the extension ZIP. If updating an existing unpacked extension, replace the files in its existing folder and click **Reload** at `brave://extensions`. Refresh the ChatGPT tab afterwards. For a first installation, enable Developer mode and **Load unpacked** from the folder containing `manifest.json`, `background.js`, `composer.js`, `content.js`, `popup.js`, and `popup.html`.
+3. In ClipBridge, enable the optional local bridge and copy its pairing key. Paste it into the extension popup and check **Enable automatic attachments**. Sign in to ChatGPT yourself in normal Brave.
+4. Choose **Clips per message**, initially 3. The allowed setting is 1–10; this is ClipBridge's local cap, **not a discovered ChatGPT account limit**. ChatGPT may enforce a lower limit. A batch is also capped at 1 GB total browser-memory payload, so large clips can reduce the number offered together.
+5. Leave **Automatically send ready batches and continue the queue in this chat** unchecked for manual sending. Check it explicitly if you want the extension to send ready batches and continue through prepared clips.
+6. Edit the optional per-batch message if desired. The default asks ChatGPT to retain gardening B-roll for planning reels and wait for your instructions.
+7. Save settings. Open the intended conversation, send/remove any existing composer attachments or drafts, then click **Arm / continue in this tab**. Keep that tab active and visible.
 
-1. Select a short, non-sensitive source in ClipBridge. Leave Cloudflare unchecked. Choose a small target size and a compression preset to produce H.264/AAC MP4 output.
-2. Split the video. Confirm the output plays and the original remains unchanged.
-3. Keep the armed ChatGPT tab visible and active. The extension transfers one queued clip over loopback in small chunks and attempts to supply it to the website's file input.
-4. Review the composer. A reserved/attempted status is **not upload confirmation**. Check for an attachment, wait for the website's upload progress to finish, and inspect any rejection or account-limit message. Video attachment support depends on ChatGPT's current interface and your account.
-5. Send the message yourself. ClipBridge never clicks Send or presses Enter for you.
-6. After reviewing the first clip, re-arm to continue with the next. The PC permits at most three reserved attempts per batch. Review/send that group before choosing **Allow next 3 clips** on the PC.
+## Faster preparation and transfer
 
-## Why review between clips?
+New Windows jobs default to 100 MB targets and **Compress — smaller file (CRF 32)**. This reduces upload data at a quality/encoding-time cost; you can choose higher quality or fast stream-copy instead. Existing prepared clips are not recompressed automatically. Splitting alone does not reduce total upload data.
 
-ChatGPT provides no stable extension API for attaching a local video or confirming upload acceptance. Its DOM and supported files can change. ClipBridge therefore uses a conservative extension-assisted workflow: one automatic input attempt per arming, with a maximum of three per desktop batch. It does not infer success from a timeout, a DOM change, or a file-input event. Unattended three-file upload completion is not promised.
+The extension downloads two clips locally in parallel and uses 2 MiB chunks, rather than the previous 192 KiB chunks. It supplies the complete batch in one file-input change event so ChatGPT can begin processing the files together. This reduces local message/request overhead; it cannot accelerate your internet connection or ChatGPT's servers.
 
-A reservation is written on the PC **before** DOM dispatch. If the browser closes, navigation occurs, or an acknowledgement is lost at that point, the outcome remains unknown and the file is not automatically repeated. The PC retains hashed file fingerprints across restarts to avoid replaying the same prepared outputs. Review and use manual attachment for a reserved clip that was rejected or never appeared.
+## Manual-send mode
 
-## Recovery
+The extension offers one batch of prepared clips together and pauses. Check the actual composer and website upload results, then send manually. Re-arm to offer the next batch. The Windows **Allow next 3 clips** control remains for the earlier single-file extension protocol; the new extension chooses its batch size directly.
 
-- **Bridge offline / wrong key:** enable the desktop bridge, copy its current key, save settings, then arm again. No connection state is inferred from a running server alone.
-- **Interrupted transfer / browser restart:** close or disable the old extension operation, choose **Retry unattempted transfers** on the PC, then re-arm. This rotates the transfer claim; an old transfer cannot acknowledge the new attempt. Files already reserved for dispatch are excluded from this retry.
-- **Input missing / unsupported file / upload limit:** review ChatGPT's error. Compress to MP4 if useful or wait for the account limit to reset. Use **Show next 3 clips (manual)** or **Open output folder** to drag/select the exact intended files. The manual queue is independent of automatic reservations; check filenames to avoid duplicates.
-- **Changed conversation / reload / inactive tab:** no new transfer is permitted for another URL, document, frame, or tab. Arm the intended conversation again. Closing Brave clears arming; saved pairing settings remain.
-- **Missing queued output:** the queue stops at that file rather than silently counting it as attempted. Restore it or clear and reprocess the queue.
-- **Lost reservation history / damaged history file:** the bridge reports an error rather than silently resetting uncertain attempts. Back up `%LOCALAPPDATA%\ClipBridge\brave-attempts.json` before repairing it. Clearing history can cause repeats.
-- **Stop:** disable the extension and uncheck the Windows bridge. The listener closes. No local transfer service runs by default.
+## Optional automatic Send
 
-## Security and limits
+Auto-send is off by default. When you explicitly enable it and arm the tab, the extension:
 
-- Only `127.0.0.1:38419` is bound. Authenticated requests require a private 256-bit pairing key and an extension ID. Origin-less Chromium GETs also require browser-controlled `Sec-Fetch-Site: none`; normal webpage origins (including ChatGPT itself) are rejected.
-- The MV3 service worker performs authenticated requests under its loopback host permission. Its ChatGPT-only host permission allows tab URL validation. The content script has no pairing-key access and no fetch proxy. Extension-local storage is restricted to trusted extension contexts; the key never enters the webpage DOM or page JavaScript.
-- File retrieval also requires the current claim. The extension accepts transfer commands only from the armed top-level ChatGPT document. No arbitrary URL or path endpoint exists.
-- Local videos are held in browser memory during an attempt. The extension caps transfers at 525 MB; this is a local safety ceiling, not a guarantee of ChatGPT's upload limit. Start with a very small clip.
-- ChatGPT receives a file only through its own UI after you enable and arm. No videos, paths, keys, or browser credentials go to Cloudflare. Optional Cloudflare monitoring sends only its documented job metadata.
-- This is an experimental unpacked extension, not a store-reviewed extension. Automated protocol tests are separate from a real Brave/Google/ChatGPT end-to-end test. See [validation](../docs/VALIDATION.md).
+1. Requires an empty, identifiable composer and a compatible file input.
+2. Transfers the selected clips locally, reserving all attempts on the PC atomically before dispatch.
+3. Adds the batch message without overwriting your draft.
+4. Waits for every expected filename in the composer, no recognized upload/progress indicator, and a visible enabled Send button, stable for 1.5 seconds. Any visible alert, modal, edited message, hidden tab or changed conversation stops the run.
+5. Records a send reservation before clicking the composer Send button **once**. This is the semantic Send action rather than an Enter key that might go to the wrong field.
+6. Requires a new user turn containing the batch message and a cleared composer before considering that submission observed.
+7. If more clips remain, waits for a new assistant turn and no visible Stop button before offering the next batch in the same armed conversation.
 
-Networking uses the MV3 worker because [content-script requests remain subject to page-origin restrictions](https://developer.chrome.com/docs/extensions/develop/concepts/network-requests). Pairing storage uses Chrome's [trusted-context access restriction](https://developer.chrome.com/docs/extensions/reference/api/storage).
+A website readiness state or a new user message is **UI evidence**, not an official upload-completion API or proof that ChatGPT can analyze the video's contents. The DOM can change. Unknown readiness, upload limits, errors or timeouts pause instead of guessing or repeatedly sending.
+
+Starting from a new-chat page can change the URL after the first send. This stops arming. Open the newly created conversation and arm it again to continue there; ClipBridge never follows an arbitrary conversation change automatically. Existing `/c/...` conversations can continue through multiple batches while their URL/document remains the same.
+
+## Test safely
+
+Start with three small, non-sensitive MP4 clips. First leave auto-send off and verify all three appear together. Send or remove that test batch yourself. Then enable auto-send, arm the intended conversation, and verify one ready batch becomes a user message exactly once. Watch the first run, including any website errors or account limits. The synthetic browser tests do not establish live ChatGPT acceptance.
+
+## Stop and recover
+
+- **Disable auto attach** in the popup stops further transfers/sends. A request already submitted cannot be recalled. Uncheck the Windows bridge to close the local listener.
+- For interrupted transfers that were never reserved for DOM dispatch: stop the browser operation, click **Retry unattempted transfers** on the PC, then re-arm.
+- For a reserved/offered batch or an uncertain send: inspect the composer and conversation before continuing. Those clips are never silently repeated. Use manual attachment for missing/rejected clips.
+- For limits or unsupported files: reduce **Clips per message**, compress to smaller MP4s if useful, or wait for the website's limit. ClipBridge does not bypass limits or retry limit errors in a loop.
+- If an input, filename or Send button cannot be identified reliably, use **Show next 3 clips (manual)** or **Open output folder**.
+
+## Privacy and security
+
+The bridge is disabled by default and binds only `127.0.0.1:38419`. Every transfer requires the private 256-bit pairing key and extension ID. Normal webpage origins are rejected; origin-less Chromium GETs additionally require browser-controlled `Sec-Fetch-Site: none`. Files require the current claim. No arbitrary file-path or URL proxy exists.
+
+Networking and pairing credentials stay in the MV3 worker and trusted extension storage, never page JavaScript. Clip transfers are authorized only for the armed top-level ChatGPT tab/document/URL. No cookies, browser profile, login credentials or video bytes are sent to Cloudflare. B-roll and local processing remain independent.
+
+Attempt reservations persist as hashed file fingerprints under `%LOCALAPPDATA%\ClipBridge\brave-attempts.json`. A damaged history fails closed; back it up before repairs because clearing it can replay clips. Per-send reservations survive worker suspension in browser-session storage; browser restart clears arming and requires a new explicit arm.
+
+This is an experimental unpacked extension. [Validation scope](https://github.com/Archil3s/clipbridge-windows/blob/main/docs/VALIDATION.md) distinguishes synthetic tests from live-site testing.

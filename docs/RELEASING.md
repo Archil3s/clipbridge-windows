@@ -24,8 +24,8 @@ Keep `src/ClipBridge/ClipBridge.csproj` and `installer/ClipBridge.iss` version v
 3. Ensure versions match, and run GitHub Actions green.
 4. Create an annotated version tag and push it:
    ```bash
-   git tag -a v0.4.0 -m "ClipBridge v0.4.0"
-   git push origin v0.4.0
+   git tag -a v0.5.0 -m "ClipBridge v0.5.0"
+   git push origin v0.5.0
    ```
 5. The tagged GitHub Action publishes a Windows portable ZIP, Inno Setup installer and a GitHub Release with automatically generated change notes.
 6. Verify artifacts are present and downloadable, then test installation from the Release.
@@ -38,6 +38,8 @@ Use GitHub Secrets only for authorised deployment credentials. Cloudflare Worker
 
 ## Preview artifact checks
 
-The Windows workflow runs `dotnet run --project tests/ClipBridge.Core.Tests -c Release` and `node --test tests/brave-extension/*.test.cjs`. These are executable regression checks without additional test packages. A non-zero result fails CI. Inspect the installer and `ClipBridge-Brave-Extension` artifacts from the same run; the extension must include `background.js`. Main-branch builds publish preview Actions artifacts without creating a stable tag.
+The Windows workflow runs `dotnet run --project tests/ClipBridge.Core.Tests -c Release` and `node --test tests/brave-extension/*.test.cjs`. These are executable regression checks without additional test packages. A non-zero result fails CI. Inspect the installer and `ClipBridge-Brave-Extension` artifacts from the same run; the extension must include `background.js` and `composer.js`. Main-branch builds publish preview Actions artifacts without creating a stable tag.
 
 Before claiming real upload support, perform the small-video checklist in `brave-extension/README.md` using normal Brave. Record separately whether Google sign-in, DOM dispatch, and ChatGPT upload acceptance were observed.
+
+For Windows 0.5.0 / extension 0.3.0, test manual multi-file dispatch before enabling optional auto-send. Verify that upload progress, disabled Send, missing filenames, alerts, user edits and navigation prevent sending. Never describe synthetic browser results as live ChatGPT acceptance. Existing per-file bridge endpoints remain for backward compatibility; the new extension requires the batch-capable desktop build.

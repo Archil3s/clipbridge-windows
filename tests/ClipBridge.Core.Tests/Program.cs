@@ -14,10 +14,15 @@ try
 {
     if (args.Contains("--serve"))
     {
-        string fixture = Path.Combine(root, "transport.mp4");
-        await File.WriteAllBytesAsync(fixture, Enumerable.Range(0, 700000).Select(i => (byte)(i % 251)).ToArray());
-        await using var fixtureBridge = new BraveUploadBridge(new string('A', 64), Path.Combine(root, "attempts.json"));
-        fixtureBridge.AddFiles([fixture]);
+        var fixtures = new List<string>();
+        for (int i = 1; i <= 4; i++)
+        {
+            string fixture = Path.Combine(root, $"transport-{i}.mp4");
+            await File.WriteAllBytesAsync(fixture, Enumerable.Range(0, 700000).Select(n => (byte)((n + i) % 251)).ToArray());
+            fixtures.Add(fixture);
+        }
+        await using var fixtureBridge = new BraveUploadBridge(new string('A', 64), Path.Combine(root, "attempts.json"), 38429);
+        fixtureBridge.AddFiles(fixtures);
         await fixtureBridge.StartAsync();
         Console.WriteLine("BRIDGE_TEST_READY");
         await Task.Delay(TimeSpan.FromSeconds(90));
@@ -89,10 +94,10 @@ try
     }
 
     var key = new string('A', 64);
-    await using var bridge = new BraveUploadBridge(key, Path.Combine(root, "attempts.json"));
+    await using var bridge = new BraveUploadBridge(key, Path.Combine(root, "attempts.json"), 38429);
     bridge.AddFiles([video, video]);
     await bridge.StartAsync();
-    using var http = new HttpClient { BaseAddress = new Uri("http://127.0.0.1:38419") };
+    using var http = new HttpClient { BaseAddress = new Uri("http://127.0.0.1:38429") };
     async Task<HttpResponseMessage> Call(string path, string? origin, string? token, HttpMethod? method = null,
         string? claim = null, string? range = null)
     {
@@ -166,8 +171,35 @@ try
     bridge.AllowNextBatch();
     using (var more = await Call("/api/next", extension, key))
         Check((await more.Content.ReadAsStringAsync()).Contains("\"ready\":true"), "explicit next batch resumes queue");
+    bridge.Clear();
+    bridge.AddFiles(Directory.GetFiles(root, "batch-*.mp4"));
+    using (var invalidBatch = await Call("/api/batch?count=11", extension, key))
+        Check(invalidBatch.StatusCode == HttpStatusCode.BadRequest, "batch size is bounded without claiming files");
+    using var batchResponse = await Call("/api/batch?count=3", extension, key);
+    var batch = JsonDocument.Parse(await batchResponse.Content.ReadAsStringAsync()).RootElement;
+    var batchItems = batch.GetProperty("items").EnumerateArray().ToArray();
+    Check(batchItems.Length == 2, "batch claims only remaining unreserved clips without replay");
+    async Task<HttpResponseMessage> ReserveBatch(object body)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/offered-batch");
+        request.Headers.Add("Origin", extension);
+        request.Headers.Add("X-ClipBridge-Key", key);
+        request.Headers.Add("X-ClipBridge-Extension", new string('a', 32));
+        request.Content = System.Net.Http.Json.JsonContent.Create(body);
+        return await http.SendAsync(request);
+    }
+    using (var invalid = await ReserveBatch(batchItems.Select((item, index) => new
+        { id = item.GetProperty("id").GetString(), claim = index == 0 ? "stale" : item.GetProperty("claim").GetString() })))
+        Check(invalid.StatusCode == HttpStatusCode.Conflict, "stale claim rejects entire batch atomically");
+    var reservations = batchItems.Select(item => new { id = item.GetProperty("id").GetString(), claim = item.GetProperty("claim").GetString() }).ToArray();
+    using (var reserved = await ReserveBatch(reservations))
+        Check(reserved.IsSuccessStatusCode, "all batch attempts reserved together");
+    using (var reservedAgain = await ReserveBatch(reservations))
+        Check(reservedAgain.IsSuccessStatusCode, "batch reservation is idempotent");
+    using (var emptyBatch = await Call("/api/batch?count=3", extension, key))
+        Check((await emptyBatch.Content.ReadAsStringAsync()).Contains("empty"), "next batch does not duplicate reserved files");
     await bridge.DisposeAsync();
-    await using var restarted = new BraveUploadBridge(key, Path.Combine(root, "attempts.json"));
+    await using var restarted = new BraveUploadBridge(key, Path.Combine(root, "attempts.json"), 38429);
     restarted.AddFiles([video]);
     await restarted.StartAsync();
     using (var remembered = await Call("/api/next", extension, key))

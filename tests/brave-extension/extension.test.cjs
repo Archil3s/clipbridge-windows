@@ -5,8 +5,8 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const path = require("node:path");
 const root = path.resolve(__dirname, "../..");
-function worker() {
-  const local = { enabled: true, pairingKey: "A".repeat(64) };
+function worker(settings = {}) {
+  const local = { enabled: true, pairingKey: "A".repeat(64), ...settings };
   const session = {};
   const requests = [];
   const callbacks = {};
@@ -28,7 +28,9 @@ function worker() {
       onRemoved: { addListener: fn => { callbacks.removed = fn; } },
       onUpdated: { addListener: fn => { callbacks.updated = fn; } } }
   };
-  let fetchImpl = async url => url.endsWith("/api/next") ?
+  let fetchImpl = async url => url.endsWith("/api/health") ? Response.json({ ok: true, version: 2, maxBatchCount: 10 }) :
+    url.includes("/api/batch?") ? Response.json({ ready: true, remaining: 0, items: Array.from({ length: Number(new URL(url).searchParams.get("count")) }, (_, i) => ({ id: "a".repeat(31) + (i+1), claim: "b".repeat(31) + (i+1), name: "clip" + i + ".mp4", size: 4 })) }) :
+    url.endsWith("/api/next") ?
     Response.json({ ready: true, id: "a".repeat(32), claim: "b".repeat(32), name: "clip.mp4", size: 4 }) :
     url.includes("/api/file/") ? new Response(new Uint8Array([1, 2, 3, 4]),
       { status: 206, headers: { "Content-Range": "bytes 0-3/4" } }) : Response.json({ ok: true });
@@ -97,9 +99,54 @@ test("disabled extension cannot be armed implicitly", async () => {
   assert.match((await w.call({ type: "arm" }, w.popup)).error, /enable/i);
   assert.equal(w.requests.length, 0);
 });
-test("content script has no credentials, networking or automatic send controls", () => {
+test("content script keeps credentials isolated and reserves optional sends before clicking", () => {
   const source = fs.readFileSync(path.join(root, "brave-extension/content.js"), "utf8");
-  assert.doesNotMatch(source, /fetch\(|pairingKey|storage\.local|\.click\(|KeyboardEvent|submit\(/);
-  assert.match(source, /checkContext\(\);\s*armed = false;\s*input\.files/);
-  assert.doesNotMatch(source, /\/api\/retry/);
+  assert.doesNotMatch(source, /fetch\(|pairingKey|storage\.local|KeyboardEvent/);
+  assert.ok(source.indexOf("if (!options.autoSend)") < source.indexOf("ui.button.click()"));
+  assert.ok(source.indexOf("type: 'reserve-send'") < source.indexOf("ui.button.click()"));
+  assert.match(source, /composer.ready\(ui, batch.items, message\)/);
+});
+
+test("multi-file batch dispatch is atomic and auto-send stays off by default", async () => {
+  const w = worker(); await w.call({ type: "arm" }, w.popup);
+  const batch = await w.call({ type: "batch", multiple: true });
+  assert.equal(batch.items.length, 3);
+  assert.match((await w.call({ type: "dispatch-batch", batchId: batch.batchId })).error, /incomplete/);
+  await Promise.all(batch.items.map(item => w.call({ type: "chunk", id: item.id })));
+  assert.equal((await w.call({ type: "dispatch-batch", batchId: batch.batchId })).ok, true);
+  assert.match((await w.call({ type: "reserve-send", batchId: batch.batchId })).error, /not authorized/);
+  const reservation = w.requests.find(request => request.url.endsWith("/api/offered-batch"));
+  assert.equal(JSON.parse(reservation.options.body).length, 3);
+  assert.match((await w.call({ type: "batch", multiple: true })).error, /needs review/);
+});
+
+test("explicit auto-send authorizes one send only; unknown sends do not advance the queue", async () => {
+  const w = worker({ autoSend: true, batchSize: 2 }); await w.call({ type: "arm" }, w.popup);
+  const batch = await w.call({ type: "batch", multiple: true });
+  assert.equal(batch.items.length, 2);
+  await Promise.all(batch.items.map(item => w.call({ type: "chunk", id: item.id })));
+  await w.call({ type: "dispatch-batch", batchId: batch.batchId });
+  assert.equal((await w.call({ type: "reserve-send", batchId: batch.batchId })).ok, true);
+  assert.ok((await w.call({ type: "reserve-send", batchId: batch.batchId })).error);
+  assert.ok((await w.call({ type: "batch", multiple: true })).error);
+  assert.equal((await w.call({ type: "sent", batchId: batch.batchId })).ok, true);
+  assert.equal(w.session.batch.phase, "sent");
+});
+
+test("single-file website input and invalid batch settings are respected", async () => {
+  const w = worker({ batchSize: 10 }); await w.call({ type: "arm" }, w.popup);
+  assert.equal((await w.call({ type: "batch", multiple: false })).items.length, 1);
+  const invalid = worker({ batchSize: 11 });
+  assert.ok((await invalid.call({ type: "arm" }, invalid.popup)).error);
+  assert.equal(invalid.requests.length, 0);
+});
+
+test("stopping the Windows bridge prevents a new auto-send reservation", async () => {
+  const w = worker({ autoSend: true }); await w.call({ type: "arm" }, w.popup);
+  const batch = await w.call({ type: "batch", multiple: true });
+  await Promise.all(batch.items.map(item => w.call({ type: "chunk", id: item.id })));
+  await w.call({ type: "dispatch-batch", batchId: batch.batchId });
+  w.fetch(async () => new Response("offline", { status: 503 }));
+  assert.ok((await w.call({ type: "reserve-send", batchId: batch.batchId })).error);
+  assert.equal(w.session.batch.sendReserved, false);
 });

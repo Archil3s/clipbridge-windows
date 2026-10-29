@@ -4,6 +4,18 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Batch upload changes
+- Add configurable multi-file batches (1–10 clips, capped at 1 GB total locally) and two concurrent local transfers using 2 MiB chunks. All files are offered together.
+- Add explicit optional auto-send, off by default. Check all filenames, upload indicators, composer text and enabled Send state before recording and performing one send attempt. Continue only after observing the new user turn and assistant completion.
+- Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
+- Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
+- Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.5.0] - 2026-10-29 (preview)
+
+Windows 0.5.0 and extension 0.3.0 add multi-clip batches and explicitly authorized auto-send. The single-clip/manual-only restrictions in the earlier experimental notes below are superseded. Live ChatGPT DOM behavior and account limits still require manual verification.
+
+
 ### Reliability fixes
 - Move authenticated localhost networking into an MV3 service worker; restrict pairing storage to trusted extension contexts and reject webpage origins at the bridge.
 - Restrict transfers to one explicitly armed top-level ChatGPT document. Transfer in bounded chunks with per-attempt claims and reject stale acknowledgements.
@@ -121,7 +133,8 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 Each change belongs under **Unreleased** during development. Before a public release: move tested features into the dated version section, align `src/ClipBridge/ClipBridge.csproj` and `installer/ClipBridge.iss`, run CI and a Windows smoke test, then tag `vX.Y.Z`. GitHub Actions builds the installer and prepares an associated Release. Unverified features must be labelled preview or experimental.
 
-[Unreleased]: https://github.com/Archil3s/clipbridge-windows/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Archil3s/clipbridge-windows/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Archil3s/clipbridge-windows/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Archil3s/clipbridge-windows/releases/tag/v0.4.0
 [0.3.0]: https://github.com/Archil3s/clipbridge-windows/commits/main
 [0.2.0]: https://github.com/Archil3s/clipbridge-windows/commits/main

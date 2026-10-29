@@ -1,6 +1,6 @@
 # ClipBridge — Windows Video Splitter
 
-ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.4.0 (preview)**.
+ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.5.0 (preview)**.
 
 ## Features
 
@@ -10,14 +10,14 @@ ClipBridge is a Windows-only C# / WPF desktop application that prepares large vi
 - **Local recovery journal:** unfinished source files are requeued after a restart; validated completed outputs can be reused with matching settings (partial transcodes must restart).
 - **Opt-in Cloudflare status reporting** via the separate Worker dashboard, sending metadata only (file name, progress and clip counts). Status is retried every five seconds while enabled. No video bytes go to Cloudflare.
 - **CHANGELOG.md, ROADMAP.md, version checks, and tag-based GitHub Releases** for future updates.
-- Batch splitting into numbered clips, with a configurable maximum size (400 MB default).
+- Batch splitting into numbered clips, with a configurable maximum size (100 MB default; smaller-file CRF 32 compression selected initially).
 - Fast mode: FFmpeg stream-copy, without re-encoding.
 - Compression mode: H.264 video / AAC audio, with quality presets (CRF 24, 28, 32).
 - One-time compression before splitting to reduce total processing, plus size validation and adaptive segment-duration retries.
 - A Windows **Inno Setup installer** and portable ZIP built by GitHub Actions.
 - **Zero manual FFmpeg setup:** on first launch, ClipBridge downloads FFmpeg and FFprobe automatically and installs them for your Windows account, then reuses them on later launches.
 - **Normal Brave browser sign-in:** opens ChatGPT in your already-installed Brave browser with no Playwright, `--no-sandbox`, or automation profile. Sign into ChatGPT directly in Brave.
-- **Optional Brave auto-attach extension (experimental):** an unpacked extension lets a signed-in, explicitly armed ChatGPT tab request prepared clips from a secure localhost bridge. It attempts one clip per explicit arming, up to 3 per authorised PC batch; you must confirm the attachments are accepted and send the ChatGPT message yourself. No browser automation, `--no-sandbox`, Google sign-in automation, or external clip server.
+- **Optional Brave auto-attach extension (experimental):** an unpacked extension lets a signed-in, explicitly armed ChatGPT tab request prepared clips from a secure localhost bridge. It offers multiple clips together (3 by default, configurable 1–10, with a 1 GB local batch ceiling). Sending remains manual by default; an explicit auto-send option checks visible readiness and submits batches once in the armed chat. Website limits may be lower. No browser automation, `--no-sandbox`, Google sign-in automation, or external clip server.
 - **Manual clip-batch fallback:** **Show next 3 clips (manual)** opens your output folder, identifies the next files, and lets you drag or select them if automatic attachment is unavailable.
 - Manual fallback: open ChatGPT and drag clips into the browser.
 
@@ -25,7 +25,7 @@ ClipBridge is a Windows-only C# / WPF desktop application that prepares large vi
 
 The optional Brave extension and locally authenticated transfer bridge can **attempt** file attachment in a normal, signed-in Brave session. Download both the Windows installer and `ClipBridge-Brave-Extension` from the **same successful build**, then follow the [extension installation and pairing guide](brave-extension/README.md).
 
-Enable the bridge in Windows, copy its pairing key into the extension, open the desired ChatGPT conversation in normal Brave, and select **Arm this ChatGPT tab**. After splitting, one clip is attempted per arming, up to 3 per PC batch. Review ChatGPT and re-arm between clips. **This does not prove that ChatGPT finished uploading any file**; check the actual composer and send messages manually. The extension is unpublished and must be loaded unpacked using `brave://extensions` Developer mode. The manual clip workflow remains available.
+Enable the bridge in Windows, copy its pairing key into the extension, open the desired ChatGPT conversation in normal Brave, and select **Arm this ChatGPT tab**. After splitting, a multi-clip batch is transferred locally with two concurrent downloads and offered together. By default, review and send manually. If you explicitly enable automatic Send, the extension checks filenames, progress indicators and the enabled Send button before one send attempt, then observes a new user message and waits for the assistant before continuing the queue. Website readiness is not proof of successful video analysis; unknown states pause. The extension is unpublished and must be loaded unpacked using `brave://extensions` Developer mode. The manual clip workflow remains available.
 
 ## B-roll cutter and gardening library (new preview feature)
 
@@ -62,7 +62,7 @@ The repository also contains [curated Impeccable and Web Quality Skills referenc
 - Windows 10/11, x64
 - .NET 10 SDK
 - An internet connection for the one-time first launch, unless FFmpeg + FFprobe are already beside the executable or in ClipBridge's tools folder
-- Brave Browser for opening ChatGPT (file attachments are manual)
+- Brave Browser for opening ChatGPT and the opt-in batch extension
 
 ```powershell
 dotnet restore .\src\ClipBridge\ClipBridge.csproj
@@ -132,3 +132,7 @@ Do not commit recordings, auth cookies, credentials, browser profiles, or API ke
 Run `dotnet run --project tests/ClipBridge.Core.Tests -c Release` and `node --test tests/brave-extension/*.test.cjs`. The Windows workflow runs both before publishing and packages the MV3 worker with the extension. The dashboard workflow runs its desktop/phone and accessibility tests for every PR. See [validation and limitations](docs/VALIDATION.md).
 
 The selected B-roll library destination and per-clip gardening tags survive restarts. The main window scrolls when settings exceed the available height. Automatic attachment reservations persist as local hashed file fingerprints; uncertain attempts need manual review, not automatic replay.
+
+## Batch uploads and optional auto-send (0.5.0 preview)
+
+Update both Windows and the extension, refresh the intended ChatGPT tab, and start with an empty composer. Choose a batch size and explicitly enable automatic Send if desired, then arm that tab. Auto-send remains off by default. Errors, limits, drafts, navigation and uncertain submissions pause the queue. A newly created chat URL must be re-armed. See the [step-by-step batch guide](brave-extension/README.md). The 1–10 selector is a local cap, not a detected ChatGPT account limit. Existing prepared clips are preserved; the 100 MB/CRF 32 defaults apply to new jobs.

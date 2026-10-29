@@ -3,12 +3,12 @@
 ## Automated evidence
 
 - Windows .NET 10 application: Release compilation with warnings treated as errors.
-- Dependency-free .NET regression runner: authorization, webpage-origin rejection, origin-less Chromium extension requests, authenticated ranged transfers, claim rotation, stale acknowledgement rejection, idempotent reservations, explicit retries, three-attempt batch ceiling, and durable reservation history across bridge restart.
+- Dependency-free .NET regression runner: authorization, webpage-origin rejection, origin-less Chromium extension requests, authenticated ranged transfers, claim rotation, stale acknowledgement rejection, idempotent reservations, explicit retries, legacy three-attempt ceiling, configurable atomic batches, and durable reservation history across bridge restart.
 - Optional Cloudflare configuration: disabled/invalid URL, missing/short/malformed token and valid configuration paths. Invalid monitoring returns a disabled reporter and a local-continuation status.
 - B-roll metadata: custom destination reload, multi-tag persistence, tag edits, any-selected-tag filtering and no-filter behavior.
 - Real FFmpeg synthetic-video tests: stream-copy splitting, compression with invalid monitoring disabled, B-roll export into a category directory, expected In/Out duration and unchanged source bytes. Run with `dotnet run --project tests/ClipBridge.Core.Tests -c Release -- --video` on Windows with FFmpeg/FFprobe in ClipBridge's installed tools directory.
-- Seven Node tests cover manifest permissions, credential isolation, unarmed/foreign-tab/frame/document rejection, chunk protocol, navigation/reload/disable, rejected malformed ranges and absence of automatic send code.
-- A real, sandboxed Chromium test loads the actual MV3 extension, uses the real .NET loopback bridge and transfers a synthetic 700,000-byte payload into a synthetic ChatGPT-shaped file input. It verifies exact bytes, one-attempt disarming, and zero Send events. This uses a separate test profile, never normal Brave or user credentials. It caught Chromium's missing GET Origin header and explicit MIME-input detection defects. Windows CI runs it before packaging.
+- Eleven Node tests cover manifest permissions, credential isolation, unarmed/foreign-tab/frame/document rejection, chunk protocol, navigation/reload/disable, rejected malformed ranges and explicit auto-send authorization and one-send reservation guards.
+- Nine real sandboxed Chromium scenarios load the actual MV3/composer code, use the real .NET bridge on an isolated test port, and exercise synthetic ChatGPT-shaped pages. They verify three-file dispatch with auto-send off, automatic batches of 3+1 with exact 700,000-byte payloads, pending uploads, disabled Send, missing filenames, visible limits, user edits, navigation and an existing draft. The test-only extension copy changes only its loopback port so the user's running app is untouched. No normal Brave profile or real account is used. Windows CI runs these before packaging.
 - The existing dashboard CI runs desktop/phone and axe accessibility tests for every PR. No dashboard application source is changed by this task.
 
 ## Reproduce
@@ -35,7 +35,7 @@ The regression runner is an executable assertion harness without additional NuGe
 - Real ChatGPT video acceptance, upload completion, account-specific size/rate limits and changes to the live website. The synthetic browser test does not establish any of these.
 - Long recordings (including 15 GB), disk-full recovery, interrupted encodes and live Cloudflare status delivery. The synthetic files do not establish those behaviors.
 
-The supported conservative workflow is one automatic attempt per explicit arming, with up to three attempts per PC batch, then manual verification and Send. A reserved/attempted status never means upload accepted. For uncertain or rejected attempts use manual attachment; unattempted transfers can be explicitly retried.
+The default workflow offers a multi-clip batch for manual review and Send. Explicitly enabled auto-send uses visible readiness checks, records a single send attempt, requires a new user turn, and waits for an assistant response before the next batch. Limits, unknown states, edits or navigation pause rather than guessing. A reserved/attempted status never means upload accepted. For uncertain or rejected attempts use manual attachment; unattempted transfers can be explicitly retried.
 
 ## Quality review
 
