@@ -1,59 +1,70 @@
 # ClipBridge — Windows Video Splitter
 
-A **Windows-only** C# / WPF desktop app for splitting large videos (including 15 GB+ files) into smaller numbered clips. Processing runs locally with FFmpeg. No Android app, cloud backend, LocalSend integration, or OpenAI API key is required.
+ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.2.0**.
 
-## Status
+## Features
 
-**Initial development version.** Source code is available for building and testing; a Windows build has not yet been verified. This is not a production release.
+- Drag and drop or multi-select large video files (including 15 GB+).
+- Batch splitting into numbered clips, with a configurable maximum size (400 MB default).
+- Fast mode: FFmpeg stream-copy, without re-encoding.
+- Compression mode: H.264 video / AAC audio, with quality presets (CRF 24, 28, 32).
+- One-time compression before splitting to reduce total processing, plus size validation and adaptive segment-duration retries.
+- A Windows **Inno Setup installer** and portable ZIP built by GitHub Actions.
+- **Experimental** Playwright browser-assisted ChatGPT attachment: starts Microsoft Edge with a separate persistent local profile, which you sign into once yourself. Attempts to attach up to three files per action. **You must check attachment status and send manually**.
+- Manual fallback: open ChatGPT and drag clips into the browser.
 
-### Included
-- Drag-and-drop and multi-select video queue.
-- FFmpeg stream-copy splitting (fast mode; no transcoding).
-- Adjustable output limit of 10–500 MB; default **400 MB**.
-- Automatic numbering and separate output folder per input.
-- Automatic retries with shorter segments if a part exceeds the size limit.
-- Output size validation and cancellation.
-- Opens ChatGPT in your default browser to allow manual attachment.
-- GitHub Actions workflow for an unsigned portable Windows build.
+## Install from GitHub Actions
 
-### Not yet implemented
-- Automatic file uploads or browser automation for ChatGPT.
-- Compression/transcoding mode, resumable jobs, per-video percentage progress.
-- Signed installer or bundled FFmpeg binaries.
+Go to **Actions → Build and package Windows app → latest successful run → Artifacts**. Download `ClipBridge-Installer`, unzip the artifact and run `ClipBridge-Setup.exe`. Windows SmartScreen may warn that the installer is not code-signed.
 
-## Requirements
+Alternatively download `ClipBridge-win-x64-portable`, extract the whole directory and run `ClipBridge.exe`.
 
-Windows 10 or 11 (64-bit), .NET 10 SDK for local development, and **FFmpeg + FFprobe** installed on PATH or placed next to the published ClipBridge.exe.
+**FFmpeg + FFprobe are still required separately.** Install them on your PATH, or put `ffmpeg.exe` and `ffprobe.exe` beside `ClipBridge.exe` in the installed app directory. See https://ffmpeg.org/download.html.
 
-FFmpeg: https://ffmpeg.org/download.html
+Microsoft Edge is required only for optional experimental browser-assisted attachments. There is no API key.
 
-## Run from source
+## Development requirements
+
+- Windows 10/11, x64
+- .NET 10 SDK
+- FFmpeg + FFprobe available on PATH or next to the executable
+- Microsoft Edge for browser-assisted attachment
 
 ```powershell
 dotnet restore .\src\ClipBridge\ClipBridge.csproj
 dotnet run --project .\src\ClipBridge\ClipBridge.csproj
 ```
 
-## Publish portable app
+Build:
 
 ```powershell
-dotnet publish .\src\ClipBridge\ClipBridge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o .\publish
+dotnet publish .\src\ClipBridge\ClipBridge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o .\publish
 ```
 
-Run `publish\ClipBridge.exe`. Install FFmpeg on PATH or place `ffmpeg.exe` and `ffprobe.exe` beside the executable. The GitHub Actions workflow publishes a downloadable build artifact when successful.
+The GitHub Actions workflow handles publishing and compiling the installer.
 
-## Usage
+## How to test
 
-1. Copy videos from your phone to your PC by any method you prefer.
-2. Drag files into ClipBridge or select them using **Select videos**.
-3. Set max clip size (default 400 MB) and an output directory.
-4. Press **Split videos**.
-5. Open the output directory and manually attach clips in ChatGPT.
+1. Transfer a video from your phone to your PC using any manual method.
+2. Drag a small sample video into ClipBridge; set the target size (e.g. 100 MB).
+3. Choose **Fast split** first. Check every numbered part plays and retains its audio.
+4. Test **Compress — balanced (CRF 28)** with the same file, comparing total size and quality. Compression can be slower and may not always make already-compressed videos smaller.
+5. Try a larger video, then a 15 GB original. Leave enough free disk space for intermediate compressed content and clips.
+6. Click **Sign in to ChatGPT (Edge)**; sign in normally inside the Edge window and open the intended conversation.
+7. Click **Attach next 3 clips (experimental)**. Check that ChatGPT accepted them, and **send the message manually**.
+8. If that fails or ChatGPT blocks the file type, click **Manual ChatGPT** and use the normal browser attachment control.
 
-## Important limitations
+## Limitations and privacy
 
-Fast mode uses FFmpeg's stream-copy segment muxer. Segments are cut at available keyframes, so very long keyframe intervals may prevent strict size compliance. The app retries with shorter durations and reports an error rather than claiming an oversized output is successful. Unsupported input codecs may require a future transcoding mode.
+- Browser automation is **not an OpenAI-supported integration** and may break with a ChatGPT UI change. Calling the file input does **not confirm the upload succeeded**; inspect the actual ChatGPT page.
+- No background upload and no automatic Send. Each batch requires a user click.
+- File upload quotas, platform availability, and accepted video formats are controlled by ChatGPT. ClipBridge cannot bypass them.
+- A separate Edge browser profile is stored only on the PC at `%LOCALAPPDATA%\ClipBridge\ChatGptEdgeProfile`. Never upload this folder or authentication data to GitHub.
+- Sparse keyframes, unusual codecs, or abrupt bitrate spikes can cause segments to exceed the size cap even after retries; in that case the app reports failure.
+- Fast mode is lossless stream-copy; compressed mode is intentionally lossy. Source files are preserved.
+- Temporary transcodes use local disk and may be sizeable. Cancellation may leave partial output clips.
+- This is an unsigned early release. Windows installer smoke testing and real ChatGPT upload testing must be completed on the target PC.
 
-Leave adequate free disk space (potentially similar to the source size). Partial outputs may remain after cancellation. ChatGPT upload limits and video support vary by interface; this app does not bypass login or quotas.
+## Repository safety
 
-**Security:** Never commit videos, authentication cookies, browser profiles, or passwords to GitHub.
+Do not commit recordings, auth cookies, credentials, browser profiles, or API keys. No LocalSend monitoring, cloud processing, Android app, or OpenAI API key is included.
