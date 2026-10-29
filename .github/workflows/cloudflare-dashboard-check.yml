@@ -26,7 +26,7 @@ jobs:
           import json
           with open('cloudflare-dashboard/wrangler.jsonc', encoding='utf-8') as file:
               config = json.load(file)
-          assert config['name'] == 'clipbridge-dashboard'
+          assert config['name'] == 'clipbridge-windows'
           assert config['assets']['directory'] == './public'
           print('Cloudflare Worker configuration and JavaScript syntax validated.')
           PY
