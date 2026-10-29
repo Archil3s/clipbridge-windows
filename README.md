@@ -37,6 +37,8 @@ Future Codex or other coding-agent contributions should start with [AGENTS.md](A
 
 The rules help avoid generic interface copy, decorative UI with no purpose, fake success metrics, inaccessible controls and redundant comments. They do **not** automatically redesign the Windows app or Cloudflare dashboard, change the runtime, or remove the need for actual UI and video tests.
 
+The repository also contains [curated Impeccable and Web Quality Skills references](third_party/design-guidance/README.md), used by future coding agents alongside Anti Slop. The Cloudflare UI build runs [accessibility and responsive browser checks](cloudflare-dashboard/tests/dashboard.spec.js). This does not install the full Impeccable CLI, change Windows UI controls or automatically redesign the website.
+
 ## Development requirements
 
 - Windows 10/11, x64

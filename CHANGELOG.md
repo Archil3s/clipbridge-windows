@@ -4,6 +4,11 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Added
+- Pinned curated Impeccable critique/polish guidance and Web Quality Skills accessibility/audit playbooks, with upstream licences and versioned attribution.
+- Added an automated axe-core accessibility check to the Cloudflare dashboard's Playwright test suite for each future UI change.
+- Updated coding-agent instructions to use targeted design reviews without changing runtime UI frameworks or adding unverified upstream tools.
+
 ### Changed
 - Reworked the Cloudflare monitor around the current video job rather than a promotional landing-page hero, following the repository's Anti Slop and design guidance.
 - Replaced decorative icon and card repetition with a smaller set of functional panels, legible status labels, and a mobile-first processing view.

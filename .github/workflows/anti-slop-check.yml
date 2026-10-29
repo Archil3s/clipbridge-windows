@@ -8,8 +8,10 @@ on:
       - "DESIGN.md"
       - "antislop.md"
       - "skills/**"
+      - "third_party/design-guidance/**"
       - "third_party/anti-slop/**"
       - "scripts/check_agent_guidelines.py"
+      - "scripts/check_design_guidance.py"
       - ".github/workflows/anti-slop-check.yml"
   pull_request:
   workflow_dispatch:
@@ -20,4 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify pinned Anti Slop guidance
-        run: python3 scripts/check_agent_guidelines.py
+        run: |
+          python3 scripts/check_agent_guidelines.py
+          python3 scripts/check_design_guidance.py
