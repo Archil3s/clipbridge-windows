@@ -176,6 +176,9 @@
                          Foreground="White" BorderBrush="#334155" Padding="5"
                          DisplayMemberPath="DisplayText"
                          MouseDoubleClick="SavedClipsList_MouseDoubleClick"/>
+                <Button Content="Apply checked topic tags to selected saved clip"
+                        Margin="0,8,0,0" HorizontalAlignment="Left"
+                        Click="ApplyTagsToSelectedButton_Click"/>
             </StackPanel>
         </Border>
     </Grid>
