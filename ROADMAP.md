@@ -28,4 +28,4 @@ Open a GitHub issue with: problem, expected workflow, acceptance tests, edge cas
 
 ## Brave attachment reliability
 
-Implemented MV3 worker transport, explicit tab/document arming, durable attempt reservations and conservative one-attempt review steps (up to three per desktop batch). Remaining: real Brave/Google sign-in and account-specific ChatGPT video acceptance verification. Stable automatic upload-completion detection is not available; manual review and fallback remain required.
+Implemented MV3 worker transport, explicit tab/document arming, durable atomic batch reservations, concurrent local transfers and multi-file dispatch. Optional auto-send is explicitly enabled and checks visible UI readiness/new turns; limits or unknown states pause. Remaining: real Brave/Google sign-in and account-specific ChatGPT acceptance/readiness verification. No official upload-completion API is used; manual fallback remains available.

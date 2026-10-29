@@ -68,6 +68,8 @@ jobs:
         run: |
           node --check brave-extension/background.js
           if ($LASTEXITCODE -ne 0) { throw "Brave extension worker syntax error" }
+          node --check brave-extension/composer.js
+          if ($LASTEXITCODE -ne 0) { throw "Brave composer.js syntax error" }
           node --check brave-extension/content.js
           if ($LASTEXITCODE -ne 0) { throw "Brave extension content.js syntax error" }
           node --check brave-extension/popup.js
@@ -79,6 +81,7 @@ jobs:
           path: |
             brave-extension/manifest.json
             brave-extension/background.js
+            brave-extension/composer.js
             brave-extension/content.js
             brave-extension/popup.js
             brave-extension/popup.html

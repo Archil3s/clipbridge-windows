@@ -268,7 +268,7 @@ public partial class MainWindow : Window
                     throw;
                 }
             }
-            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open normal Brave, then choose clips to attach manually.";
+            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open normal Brave and arm the batch extension, or choose clips for manual attachment.";
         }
         catch (OperationCanceledException)
         {
@@ -292,6 +292,7 @@ public partial class MainWindow : Window
         StartButton.IsEnabled = !busy;
         BRollButton.IsEnabled = !busy;
         AddVideosButton.IsEnabled = !busy;
+        AddPreparedButton.IsEnabled = !busy;
         ClearButton.IsEnabled = !busy;
         TargetSizeBox.IsEnabled = !busy;
         ModeBox.IsEnabled = !busy;
@@ -326,7 +327,7 @@ public partial class MainWindow : Window
         try
         {
             _chatGptBrowser.Open();
-            StatusLabel.Text = "Opened ChatGPT in normal Brave without browser automation. Sign in there, then attach clips manually.";
+            StatusLabel.Text = "Opened ChatGPT in normal Brave without browser automation. Sign in there, then arm the batch extension or attach manually.";
         }
         catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception)
         {
@@ -335,6 +336,45 @@ public partial class MainWindow : Window
                 "\\nInstall Brave or open ChatGPT manually in your browser.",
                 "ClipBridge browser", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private void AddPreparedButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Choose already prepared clips (no reprocessing)",
+            Multiselect = true,
+            Filter = "Prepared video clips|*.mp4;*.mov;*.m4v;*.webm"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        int added = 0;
+        int rejected = 0;
+        foreach (string path in dialog.FileNames)
+        {
+            try
+            {
+                string[] extensions = [".mp4", ".mov", ".m4v", ".webm"];
+                var file = new FileInfo(path);
+                if (!extensions.Contains(file.Extension, StringComparer.OrdinalIgnoreCase) ||
+                    !file.Exists || file.Length <= 0 || file.Length > 525_000_000)
+                {
+                    rejected++;
+                    continue;
+                }
+                if (_uploadQueue.Contains(path, StringComparer.OrdinalIgnoreCase)) continue;
+                _uploadQueue.Add(path);
+                added++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                rejected++;
+            }
+        }
+        _braveUploadBridge?.AddFiles(_uploadQueue);
+        AttachButton.IsEnabled = _uploadQueue.Count > 0;
+        StatusLabel.Text = $"Added {added} prepared clip(s) without processing; {_uploadQueue.Count} in attachment queue. " +
+            (rejected > 0 ? $"Skipped {rejected} unsupported, unreadable, missing, empty or over-525-MB files. " : "") +
+            "Arm the Brave extension to upload batches. Previously reserved clips will not be repeated automatically.";
     }
 
     private void AttachButton_Click(object sender, RoutedEventArgs e)

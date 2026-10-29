@@ -17,6 +17,9 @@ namespace ClipBridge.Core;
 public sealed class BraveUploadBridge : IAsyncDisposable
 {
     public const int Port = 38419;
+    public const int MaximumBatchCount = 10;
+    public const long MaximumBatchBytes = 1_000_000_000;
+    private sealed record BatchReservation(string Id, string Claim);
     private readonly object _gate = new();
     private readonly List<UploadItem> _items = [];
     private WebApplication? _server;
@@ -24,12 +27,14 @@ public sealed class BraveUploadBridge : IAsyncDisposable
     private bool _running;
     private DateTime? _lastContactUtc;
     private readonly string _pairingKey;
+    private readonly int _port = Port;
     private readonly string? _historyPath;
     private readonly HashSet<string> _attempts = [];
 
-    internal BraveUploadBridge(string key, string? historyPath = null)
+    internal BraveUploadBridge(string key, string? historyPath = null, int port = Port)
     {
         _pairingKey = key;
+        _port = port;
         _historyPath = historyPath;
         LoadAttempts();
     }
@@ -156,11 +161,28 @@ public sealed class BraveUploadBridge : IAsyncDisposable
         }
     }
 
+    private void ReserveAttempts(IReadOnlyList<UploadItem> items)
+    {
+        if (items.All(item => item.Offered)) return;
+        var attempts = _attempts.Concat(items.Select(item => item.Fingerprint)).Distinct().ToArray();
+        if (_historyPath is not null)
+        {
+            string temporary = _historyPath + ".tmp";
+            File.WriteAllText(temporary, JsonSerializer.Serialize(attempts));
+            File.Move(temporary, _historyPath, overwrite: true);
+        }
+        foreach (var item in items)
+        {
+            _attempts.Add(item.Fingerprint);
+            item.Offered = true;
+        }
+    }
+
     public async Task StartAsync(CancellationToken ct = default)
     {
         if (_running) return;
         var builder = WebApplication.CreateSlimBuilder();
-        builder.WebHost.UseKestrel(options => options.Listen(IPAddress.Loopback, Port));
+        builder.WebHost.UseKestrel(options => options.Listen(IPAddress.Loopback, _port));
         WebApplication app = builder.Build();
 
         app.Use(async (context, next) =>
@@ -185,7 +207,7 @@ public sealed class BraveUploadBridge : IAsyncDisposable
             context.Response.Headers["Vary"] = "Origin";
             context.Response.Headers["Access-Control-Expose-Headers"] = "Content-Range";
             context.Response.Headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
-            context.Response.Headers["Access-Control-Allow-Headers"] = "X-ClipBridge-Key, X-ClipBridge-Claim, X-ClipBridge-Extension, Range";
+            context.Response.Headers["Access-Control-Allow-Headers"] = "X-ClipBridge-Key, X-ClipBridge-Claim, X-ClipBridge-Extension, Range, Content-Type";
             if (context.Request.Method == "OPTIONS")
             {
                 context.Response.StatusCode = 204;
@@ -211,7 +233,68 @@ public sealed class BraveUploadBridge : IAsyncDisposable
             await next();
         });
 
-        app.MapGet("/api/health", () => Results.Json(new { ok = true, version = 1 }));
+        app.MapGet("/api/health", () => Results.Json(new { ok = true, version = 2, maxBatchCount = MaximumBatchCount, maxBatchBytes = MaximumBatchBytes }));
+        app.MapGet("/api/batch", (int count) =>
+        {
+            if (count < 1 || count > MaximumBatchCount) return Results.BadRequest(new { error = "Choose 1 to 10 clips per batch." });
+            lock (_gate)
+            {
+                if (_items.Any(item => item.Claimed && !item.Offered))
+                    return Results.Json(new { ready = false, reason = "review-required" });
+                var candidates = _items.Where(item => !item.Offered).Take(count).ToArray();
+                if (candidates.Length == 0) return Results.Json(new { ready = false, reason = "empty" });
+                var selected = new List<UploadItem>();
+                long bytes = 0;
+                foreach (var item in candidates)
+                {
+                    if (!File.Exists(item.Path)) return Results.Json(new { ready = false, reason = "missing-file" });
+                    long size = new FileInfo(item.Path).Length;
+                    if (size <= 0 || size > 525_000_000) return Results.Json(new { ready = false, reason = "unsupported-size" });
+                    if (bytes + size > MaximumBatchBytes) break;
+                    selected.Add(item);
+                    bytes += size;
+                }
+                foreach (var item in selected)
+                {
+                    item.Claimed = true;
+                    item.Claim = Guid.NewGuid().ToString("N");
+                    item.ClaimUntilUtc = DateTime.UtcNow.AddHours(1);
+                }
+                _inCurrentBatch = selected.Count;
+                return Results.Json(new
+                {
+                    ready = true,
+                    remaining = _items.Count(item => !item.Offered) - selected.Count,
+                    items = selected.Select(item => new
+                    {
+                        id = item.Id,
+                        claim = item.Claim,
+                        name = Path.GetFileName(item.Path),
+                        size = new FileInfo(item.Path).Length
+                    }).ToArray()
+                });
+            }
+        });
+        app.MapPost("/api/offered-batch", async (HttpContext context) =>
+        {
+            var reservations = await context.Request.ReadFromJsonAsync<List<BatchReservation>>();
+            if (reservations is null || reservations.Count < 1 || reservations.Count > MaximumBatchCount ||
+                reservations.Select(item => item.Id).Distinct().Count() != reservations.Count)
+                return Results.BadRequest(new { error = "Invalid batch reservation." });
+            lock (_gate)
+            {
+                var items = new List<UploadItem>();
+                foreach (var reservation in reservations)
+                {
+                    var item = _items.FirstOrDefault(item => item.Id == reservation.Id &&
+                        item.Claim == reservation.Claim && item.Claimed);
+                    if (item is null) return Results.Conflict(new { error = "Batch claim changed; review before retrying." });
+                    items.Add(item);
+                }
+                ReserveAttempts(items);
+                return Results.Ok(new { status = "reserved", count = items.Count, upload = "unknown" });
+            }
+        });
         app.MapGet("/api/next", () =>
         {
             lock (_gate)
@@ -264,18 +347,7 @@ public sealed class BraveUploadBridge : IAsyncDisposable
                 UploadItem? item = _items.FirstOrDefault(x => x.Id == id && x.Claim == context.Request.Headers["X-ClipBridge-Claim"].ToString() && x.Claimed);
                 if (item is null) return Results.NotFound();
                 // Reserve before DOM dispatch so an uncertain attempt cannot replay.
-                if (!item.Offered)
-                {
-                    var attempts = _attempts.Append(item.Fingerprint).Distinct().ToArray();
-                    if (_historyPath is not null)
-                    {
-                        string temporary = _historyPath + ".tmp";
-                        File.WriteAllText(temporary, JsonSerializer.Serialize(attempts));
-                        File.Move(temporary, _historyPath, overwrite: true);
-                    }
-                    _attempts.Add(item.Fingerprint);
-                    item.Offered = true;
-                }
+                ReserveAttempts([item]);
                 return Results.Ok(new { status = "attempted", next = "verify-in-chatgpt" });
             }
         });
