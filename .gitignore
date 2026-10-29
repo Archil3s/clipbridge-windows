@@ -19,3 +19,9 @@ publish/
 *.sqlite
 *.db
 .env
+
+# Cloudflare local development (never commit credentials)
+**/.wrangler/
+**/node_modules/
+**/.dev.vars*
+**/.env*
