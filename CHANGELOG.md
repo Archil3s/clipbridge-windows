@@ -5,6 +5,7 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 ## [Unreleased]
 
 ### Batch upload changes
+- Add **Add prepared clips** to rebuild the attachment queue from saved outputs after an upgrade/restart without reprocessing the source.
 - Add configurable multi-file batches (1–10 clips, capped at 1 GB total locally) and two concurrent local transfers using 2 MiB chunks. All files are offered together.
 - Add explicit optional auto-send, off by default. Check all filenames, upload indicators, composer text and enabled Send state before recording and performing one send attempt. Continue only after observing the new user turn and assistant completion.
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.

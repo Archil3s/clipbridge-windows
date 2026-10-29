@@ -59,3 +59,5 @@ Networking and pairing credentials stay in the MV3 worker and trusted extension 
 Attempt reservations persist as hashed file fingerprints under `%LOCALAPPDATA%\ClipBridge\brave-attempts.json`. A damaged history fails closed; back it up before repairs because clearing it can replay clips. Per-send reservations survive worker suspension in browser-session storage; browser restart clears arming and requires a new explicit arm.
 
 This is an experimental unpacked extension. [Validation scope](https://github.com/Archil3s/clipbridge-windows/blob/main/docs/VALIDATION.md) distinguishes synthetic tests from live-site testing.
+
+To reuse existing outputs after an app upgrade/restart, choose **Add prepared clips** in Windows and select the saved MP4/MOV/M4V/WebM clips. This adds them to the attachment queue without reprocessing or changing them. Missing, empty and over-525-MB files are rejected; durable reservations still prevent silent replay of earlier attempts.

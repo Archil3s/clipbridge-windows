@@ -136,3 +136,5 @@ The selected B-roll library destination and per-clip gardening tags survive rest
 ## Batch uploads and optional auto-send (0.5.0 preview)
 
 Update both Windows and the extension, refresh the intended ChatGPT tab, and start with an empty composer. Choose a batch size and explicitly enable automatic Send if desired, then arm that tab. Auto-send remains off by default. Errors, limits, drafts, navigation and uncertain submissions pause the queue. A newly created chat URL must be re-armed. See the [step-by-step batch guide](brave-extension/README.md). The 1–10 selector is a local cap, not a detected ChatGPT account limit. Existing prepared clips are preserved; the 100 MB/CRF 32 defaults apply to new jobs.
+
+To reuse existing outputs after an app upgrade/restart, choose **Add prepared clips** in Windows and select the saved MP4/MOV/M4V/WebM clips. This adds them to the attachment queue without reprocessing or changing them. Missing, empty and over-525-MB files are rejected; durable reservations still prevent silent replay of earlier attempts.

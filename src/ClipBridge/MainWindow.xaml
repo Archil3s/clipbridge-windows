@@ -126,6 +126,7 @@
                         Click="BRollButton_Click" />
                 <Button x:Name="ChatGptLoginButton" Content="Open ChatGPT in Brave"
                         Click="ChatGptLoginButton_Click" />
+                <Button x:Name="AddPreparedButton" Content="Add prepared clips" Click="AddPreparedButton_Click" />
                 <Button x:Name="AttachButton" Content="Show next 3 clips (manual)" IsEnabled="False"
                         Click="AttachButton_Click" />
             </WrapPanel>

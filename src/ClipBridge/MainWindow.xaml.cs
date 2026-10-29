@@ -292,6 +292,7 @@ public partial class MainWindow : Window
         StartButton.IsEnabled = !busy;
         BRollButton.IsEnabled = !busy;
         AddVideosButton.IsEnabled = !busy;
+        AddPreparedButton.IsEnabled = !busy;
         ClearButton.IsEnabled = !busy;
         TargetSizeBox.IsEnabled = !busy;
         ModeBox.IsEnabled = !busy;
@@ -335,6 +336,36 @@ public partial class MainWindow : Window
                 "\\nInstall Brave or open ChatGPT manually in your browser.",
                 "ClipBridge browser", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private void AddPreparedButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Choose already prepared clips (no reprocessing)",
+            Multiselect = true,
+            Filter = "Prepared video clips|*.mp4;*.mov;*.m4v;*.webm"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        int added = 0;
+        int rejected = 0;
+        foreach (string path in dialog.FileNames)
+        {
+            var file = new FileInfo(path);
+            if (!file.Exists || file.Length <= 0 || file.Length > 525_000_000)
+            {
+                rejected++;
+                continue;
+            }
+            if (_uploadQueue.Contains(path, StringComparer.OrdinalIgnoreCase)) continue;
+            _uploadQueue.Add(path);
+            added++;
+        }
+        _braveUploadBridge?.AddFiles(_uploadQueue);
+        AttachButton.IsEnabled = _uploadQueue.Count > 0;
+        StatusLabel.Text = $"Added {added} prepared clip(s) without processing; {_uploadQueue.Count} in attachment queue. " +
+            (rejected > 0 ? $"Skipped {rejected} missing, empty or over-525-MB files. " : "") +
+            "Arm the Brave extension to upload batches. Previously reserved clips will not be repeated automatically.";
     }
 
     private void AttachButton_Click(object sender, RoutedEventArgs e)
