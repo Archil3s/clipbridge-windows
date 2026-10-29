@@ -25,10 +25,10 @@ public sealed class VideoSplitter
     }
 
     public async Task<SplitResult> SplitAsync(string inputPath, string outputRoot, int targetMb,
-        CancellationToken cancellationToken)
+        bool compress, int crf, CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath)) throw new FileNotFoundException("Video file not found.", inputPath);
-        var file = new FileInfo(inputPath);
+        if (crf < 18 || crf > 36) throw new ArgumentOutOfRangeException(nameof(crf));
         // 1 MB = 1,000,000 bytes. Allow a margin for muxing overhead.
         long hardLimit = (long)targetMb * 1_000_000L;
         long planningLimit = hardLimit * 80 / 100;
@@ -39,10 +39,37 @@ public sealed class VideoSplitter
             $"{safeName}_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{Guid.NewGuid().ToString("N")[..6]}");
         Directory.CreateDirectory(outputDirectory);
 
+        string workingFile = inputPath;
+        string? intermediate = null;
+        try
+        {
+            if (compress)
+            {
+                intermediate = Path.Combine(outputDirectory, "_compressed_working_file.mp4");
+                // Re-encode once. After that, use the fast segmenter to cut the
+                // smaller compressed file, without recompressing every segment.
+                await RunProcessAsync(_ffmpeg,
+                [
+                    "-hide_banner", "-nostdin", "-y", "-loglevel", "error",
+                    "-i", inputPath,
+                    "-map", "0:v:0", "-map", "0:a?", "-sn", "-dn",
+                    "-c:v", "libx264", "-preset", "veryfast",
+                    "-crf", crf.ToString(CultureInfo.InvariantCulture),
+                    "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
+                    intermediate
+                ], cancellationToken);
+                workingFile = intermediate;
+            }
+
+            var file = new FileInfo(workingFile);
+            if (file.Length <= 0)
+                throw new InvalidOperationException("Output video has zero bytes.");
+
         if (file.Length <= hardLimit)
         {
-            string destination = Path.Combine(outputDirectory, "part_0001" + file.Extension);
-            await using (var source = new FileStream(inputPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+            string destination = Path.Combine(outputDirectory, "part_0001" + (compress ? ".mp4" : file.Extension));
+            await using (var source = new FileStream(workingFile, FileMode.Open, FileAccess.Read, FileShare.Read,
                 1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan))
             await using (var target = new FileStream(destination, FileMode.CreateNew, FileAccess.Write,
                 FileShare.None, 1024 * 1024, FileOptions.Asynchronous))
@@ -50,7 +77,7 @@ public sealed class VideoSplitter
             return new SplitResult(outputDirectory, 1, true);
         }
 
-        (double duration, long size) = await ProbeAsync(inputPath, cancellationToken);
+        (double duration, long size) = await ProbeAsync(workingFile, cancellationToken);
         if (duration <= 0 || !double.IsFinite(duration))
             throw new InvalidOperationException("FFprobe could not determine the video duration.");
         double bytesPerSecond = Math.Max(1.0, size / duration);
@@ -73,10 +100,10 @@ public sealed class VideoSplitter
             await RunProcessAsync(_ffmpeg,
             [
                 "-hide_banner", "-nostdin", "-y", "-loglevel", "error",
-                "-i", inputPath,
+                "-i", workingFile,
                 "-map", "0:v:0?", "-map", "0:a?", "-sn", "-dn",
                 "-c", "copy", "-f", "segment", "-segment_format", "mp4",
-                "-segment_time", length, "-reset_timestamps", "1",
+                "-segment_time", length, "-segment_start_number", "1", "-reset_timestamps", "1",
                 outputPattern
             ], cancellationToken);
 
@@ -90,6 +117,15 @@ public sealed class VideoSplitter
 
         FileInfo[] finalSegments = new DirectoryInfo(outputDirectory).GetFiles("part_*.mp4");
         return new SplitResult(outputDirectory, finalSegments.Length, false);
+        }
+        finally
+        {
+            // Keep the original and output clips; remove the temporary full-length transcode.
+            if (intermediate is not null && File.Exists(intermediate))
+            {
+                try { File.Delete(intermediate); } catch (IOException) { /* Keep visible until next cleanup. */ }
+            }
+        }
     }
 
     private async Task<(double duration, long size)> ProbeAsync(string inputPath, CancellationToken ct)
