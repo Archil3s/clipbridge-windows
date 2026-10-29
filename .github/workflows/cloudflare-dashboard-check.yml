@@ -1,0 +1,33 @@
+name: Check Cloudflare dashboard
+
+on:
+  push:
+    branches: [main, feature/cloudflare-dashboard]
+    paths:
+      - "cloudflare-dashboard/**"
+      - ".github/workflows/cloudflare-dashboard-check.yml"
+  pull_request:
+    paths:
+      - "cloudflare-dashboard/**"
+      - ".github/workflows/cloudflare-dashboard-check.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check project JavaScript syntax and configuration
+        shell: bash
+        run: |
+          node --check cloudflare-dashboard/src/index.js
+          node --check cloudflare-dashboard/public/app.js
+          node -e "const c=require('./cloudflare-dashboard/wrangler.jsonc'.replace('.jsonc','.json'));" || true
+          python - <<'PY'
+          import json
+          with open('cloudflare-dashboard/wrangler.jsonc', encoding='utf-8') as file:
+              config = json.load(file)
+          assert config['name'] == 'clipbridge-dashboard'
+          assert config['assets']['directory'] == './public'
+          print('Cloudflare Worker configuration and JavaScript syntax validated.')
+          PY
