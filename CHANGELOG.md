@@ -4,6 +4,12 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Changed
+- Rebuilt the ClipBridge Cloudflare monitor into a premium dark-and-mint, task-first responsive dashboard with compact phone header and anchored navigation.
+- Added a large processing ring bound to real Cloudflare job progress, with a blank waiting state and unmistakably labelled sample preview.
+- Consolidated desktop, API health, viewer access, and activity into clearer panels, preserving the existing authenticated Cloudflare status API and 5-second polling.
+- Updated the Playwright browser suite for real-vs-sample progress and 320px mobile layouts.
+
 ### Added
 - Cloudflare dashboard v0.3 adds a first-time connection guide with the exact Worker root, KV binding, and two secret names.
 - Added an unauthenticated Worker API health check that explicitly does **not** imply storage, viewer access, or a connected PC.

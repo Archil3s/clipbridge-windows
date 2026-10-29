@@ -11,6 +11,8 @@ test("disconnected state is honest and sample is labelled", async ({ page }) => 
   await expect(page.locator("#demoMarker")).toBeVisible();
   await expect(page.locator("#demoMarker")).toContainText("not your computer");
   await expect(page.locator("#progressText")).toHaveText("68%");
+  await expect(page.locator("#ringValue")).toHaveText("68%");
+  await expect(page.locator("#ringHelp")).toContainText("not your PC");
   await expect(page.locator("#desktopConnection")).toHaveText("Sample, not connected");
 
   await page.getByRole("button", { name: "Exit sample" }).click();
@@ -61,6 +63,8 @@ test("live and stale data show truthful states", async ({ page }) => {
   await expect(page.locator("#stateTitle")).toHaveText("Desktop reporting");
   await expect(page.locator("#jobName")).toHaveText("test_garden.mp4");
   await expect(page.locator("#progressText")).toHaveText("42%");
+  await expect(page.locator("#ringValue")).toHaveText("42%");
+  await expect(page.locator("#ringHelp")).toContainText("Latest video");
   await expect(page.locator("#jobClipsFact")).toHaveText("4 / 10");
   await expect(page.locator("#demoMarker")).toBeHidden();
 
@@ -69,6 +73,20 @@ test("live and stale data show truthful states", async ({ page }) => {
   await page.locator("#previewBtn").click();
   await expect(page.locator("#stateTitle")).toHaveText("Desktop not reporting");
   await expect(page.locator("#desktopConnection")).toHaveText("Not reporting");
+});
+
+test("premium progress ring shows only verified data and not invented metrics", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#ringValue")).toHaveText("—");
+  await expect(page.locator("#ringCaption")).toHaveText("No job yet");
+  await expect(page.locator("#jobRing")).toBeVisible();
+  await expect(page.locator("#demoMarker")).toBeHidden();
+  await page.locator("#previewBtn").click();
+  await expect(page.locator("#ringValue")).toHaveText("68%");
+  await expect(page.locator("#demoMarker")).toBeVisible();
+  await page.locator("#previewBtn").click();
+  await expect(page.locator("#ringValue")).toHaveText("—");
+  await expect(page.locator("#progressText")).toHaveText("Not reported");
 });
 
 test("layout has no sideways scroll and controls remain usable", async ({ page }) => {
