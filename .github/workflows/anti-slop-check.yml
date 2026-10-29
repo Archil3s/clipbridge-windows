@@ -1,0 +1,23 @@
+name: Verify agent guidance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "AGENTS.md"
+      - "DESIGN.md"
+      - "antislop.md"
+      - "skills/**"
+      - "third_party/anti-slop/**"
+      - "scripts/check_agent_guidelines.py"
+      - ".github/workflows/anti-slop-check.yml"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  guidance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify pinned Anti Slop guidance
+        run: python3 scripts/check_agent_guidelines.py
