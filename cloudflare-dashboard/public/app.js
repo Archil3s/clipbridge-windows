@@ -10,6 +10,78 @@
     connected: false
   };
 
+  // The Worker currently exposes only one job. Trends are derived from samples
+  // received during this browser session, not fabricated server history.
+  const liveSamples = [];
+  let trackedJobId = null;
+  let trackedUpdate = null;
+  const sampleProgress = [4, 14, 25, 38, 51, 68];
+  const sampleClips = [1, 4, 9, 15, 20, 26];
+
+  function drawTrend(elementId, emptyId, values, top = 100) {
+    const path = byId(elementId);
+    const empty = byId(emptyId);
+    if (values.length < 2) {
+      path.setAttribute("d", "");
+      empty.hidden = false;
+      return;
+    }
+    const scale = Math.max(1, top);
+    const result = values.map((value, index) => {
+      const x = (index * 320 / (values.length - 1)).toFixed(1);
+      const y = (62 - Math.min(1, Math.max(0, value / scale)) * 55).toFixed(1);
+      return (index ? "L" : "M") + x + " " + y;
+    }).join(" ");
+    path.setAttribute("d", result);
+    empty.hidden = true;
+  }
+
+  function appendLiveSample(job) {
+    if (!job || typeof job.jobId !== "string") return;
+    if (trackedJobId !== job.jobId) {
+      liveSamples.length = 0;
+      trackedJobId = job.jobId;
+      trackedUpdate = null;
+    }
+    if (job.updatedAt && job.updatedAt === trackedUpdate) return;
+    trackedUpdate = job.updatedAt || null;
+    liveSamples.push({
+      progress: Math.max(0, Math.min(100, Number(job.progress) || 0)),
+      clips: Math.max(0, Number(job.clipsDone) || 0)
+    });
+    if (liveSamples.length > 24) liveSamples.shift();
+  }
+
+  function updateMetrics(job, demo) {
+    const progress = Math.max(0, Math.min(100, Number(job.progress) || 0));
+    const clips = Math.max(0, Math.floor(Number(job.clipsDone) || 0));
+    const total = Math.max(0, Math.floor(Number(job.clipsTotal) || 0));
+    setText("metricProgress", Math.round(progress) + "%");
+    setText("metricProgressUnit", demo ? "Example only" : "Latest video");
+    setText("metricProgressTag", demo ? "SAMPLE" : "REPORTED");
+    setText("metricClips", String(clips));
+    setText("metricClipsUnit", total > 0 ? "of " + total + " clips" : "total not known");
+    setText("metricClipsTag", demo ? "SAMPLE" : "REPORTED");
+    setText("queueCount", demo ? "1 sample" : "1 reported");
+    const ps = demo ? sampleProgress : liveSamples.map(x => x.progress);
+    const cs = demo ? sampleClips : liveSamples.map(x => x.clips);
+    drawTrend("progressTrend", "progressTrendEmpty", ps, 100);
+    drawTrend("clipsTrend", "clipsTrendEmpty", cs,
+      total || Math.max(1, ...cs));
+  }
+
+  function clearMetrics() {
+    setText("metricProgress", "—");
+    setText("metricProgressUnit", "Waiting for job");
+    setText("metricProgressTag", "NO DATA");
+    setText("metricClips", "—");
+    setText("metricClipsUnit", "No output reported");
+    setText("metricClipsTag", "WAITING");
+    setText("queueCount", "0 reported");
+    drawTrend("progressTrend", "progressTrendEmpty", []);
+    drawTrend("clipsTrend", "clipsTrendEmpty", []);
+  }
+
   function setText(id, value) {
     const node = byId(id);
     const next = String(value);
@@ -69,6 +141,7 @@
     setText("jobState", status);
     byId("jobState").dataset.state = job.status;
     setText("jobName", filename);
+    updateMetrics(job, demo);
     setText("jobHint", demo
       ? "Example video for layout preview. This is not a real processing job."
       : online
@@ -99,6 +172,7 @@
   }
 
   function clearJob() {
+    clearMetrics();
     byId("demoMarker").hidden = true;
     byId("jobState").dataset.state = "waiting";
     setText("jobState", "Waiting");
@@ -153,6 +227,7 @@
       return;
     }
     const online = data.online === true;
+    appendLiveSample(data.job);
     const updated = readableTime(data.job.updatedAt);
     if (online) {
       topState("online", "Desktop reporting", "Status is arriving from the Windows app. Updates are checked every 5 seconds.");
