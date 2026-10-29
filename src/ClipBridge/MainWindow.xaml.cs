@@ -109,7 +109,10 @@ public partial class MainWindow : Window
         _videos.Clear();
         _uploadQueue.Clear();
         _uploadPosition = 0;
+        _braveUploadBridge?.Clear();
         AttachButton.IsEnabled = false;
+        if (_braveUploadBridge is not null)
+            BraveBridgeStatusLabel.Text = _braveUploadBridge.Status;
         StatusLabel.Text = "Queue cleared";
     }
 
