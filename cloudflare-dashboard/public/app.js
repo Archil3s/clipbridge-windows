@@ -1,167 +1,305 @@
 (() => {
   "use strict";
-  const el = id => document.getElementById(id);
-  let token = "";
-  let demo = false;
-  let lastStatus = null;
-  let online = false;
 
-  function text(id, value) { el(id).textContent = String(value); }
-  function setMode(tag, desc, style, button) {
-    text("modeTag", tag);
-    el("modeTag").className = "mode-tag" + (style ? " " + style : "");
-    text("modeDescription", desc);
-    el("previewBtn").innerHTML = "";
-    el("previewBtn").append(document.createTextNode(button));
-    el("previewBtn").append(document.createTextNode(" ↗"));
+  const byId = id => document.getElementById(id);
+  const state = {
+    token: "",
+    demo: false,
+    latest: null,
+    polling: false,
+    connected: false
+  };
+
+  function setText(id, value) {
+    const node = byId(id);
+    const next = String(value);
+    if (node.textContent !== next) node.textContent = next;
   }
-  function setConnection(isOnline) {
-    online = isOnline;
-    el("sideDot").classList.toggle("connected", isOnline);
-    text("sideDeviceStatus", isOnline ? "Connected" : "Not connected");
-    text("connectionValue", isOnline ? "Online" : "Offline");
-    text("connectionSub", isOnline ? "Receiving desktop updates" : "No desktop updates received");
+
+  function readableTime(value) {
+    if (!value || !Number.isFinite(Date.parse(value))) return "Unknown time";
+    return new Date(value).toLocaleTimeString(undefined, {
+      hour: "numeric", minute: "2-digit"
+    });
   }
-  function setProgress(percent) {
-    const p = Math.max(0, Math.min(100, Number(percent) || 0));
-    el("progressFill").style.width = p + "%";
-    el("progressTrack").setAttribute("aria-valuenow", String(p));
-    text("progressText", Math.round(p) + "%");
+
+  function statusLabel(value) {
+    const map = {
+      queued: "Queued",
+      processing: "Processing",
+      paused: "Paused",
+      completed: "Completed",
+      failed: "Failed",
+      cancelled: "Cancelled"
+    };
+    return map[value] || "Unknown";
   }
-  function prettyDate(value) {
-    if (!value || !Number.isFinite(Date.parse(value))) return "No updates";
-    return new Date(value).toLocaleTimeString(undefined, {hour: "2-digit", minute: "2-digit"});
+
+  function topState(kind, title, description) {
+    byId("statePanel").dataset.state = kind;
+    byId("stateLight").dataset.state = kind;
+    byId("railLight").dataset.state = kind;
+    byId("activitySymbol").dataset.state = kind;
+    setText("stateTitle", title);
+    setText("stateDescription", description);
   }
-  function renderOffline(message = "A separate Cloudflare dashboard is ready. Link the Windows app to display live progress.") {
-    setMode("NOT CONNECTED", message, "", "Preview demo");
-    setConnection(false);
-    text("activeJobValue", "—"); text("activeJobSub", "No active processing");
-    text("clipsValue", "—"); text("clipsSub", "Waiting for first update");
-    text("sizeValue", "—"); text("sizeSub", "Current source file");
-    text("jobState", "Waiting"); el("jobState").className = "state-pill idle";
-    el("jobState").innerHTML = "<span></span> Waiting";
-    text("jobName", "No video processing yet");
-    text("jobHint", "When ClipBridge starts a job, its progress can appear here.");
-    setProgress(0); text("progressText", "—");
-    text("progressFoot", "Waiting for desktop connection"); text("lastUpdate", "No updates");
-    text("lastSync", "Not synced yet");
-    text("activityLabel", "No activity"); text("activityTitle", "No processing updates yet");
-    text("activityDescription", "Once connected, this panel shows the most recent desktop job status.");
-    text("activityTime", "—");
-    text("accessStatus", token ? "Viewer token provided" : "Token required for live data");
+
+  function setJob(job, { demo = false, online = false } = {}) {
+    const filename = typeof job.fileName === "string" ? job.fileName : "Unnamed video";
+    const progress = Math.min(100, Math.max(0, Number(job.progress) || 0));
+    const complete = Math.max(0, Math.floor(Number(job.clipsDone) || 0));
+    const total = Math.max(0, Math.floor(Number(job.clipsTotal) || 0));
+    const size = Number.isFinite(Number(job.fileSizeGb)) && Number(job.fileSizeGb) >= 0
+      ? Number(job.fileSizeGb).toFixed(2) + " GB"
+      : "Not reported";
+    const status = statusLabel(job.status);
+    const updated = readableTime(job.updatedAt);
+
+    byId("demoMarker").hidden = !demo;
+    setText("jobState", status);
+    byId("jobState").dataset.state = job.status;
+    setText("jobName", filename);
+    setText("jobHint", demo
+      ? "Example video for layout preview. This is not a real processing job."
+      : online
+        ? "Latest status from ClipBridge Windows."
+        : "This is the last reported job. The desktop is not currently reporting.");
+    setText("progressText", Math.round(progress) + "%");
+    byId("progressFill").style.width = progress + "%";
+    byId("progressTrack").setAttribute("aria-valuenow", String(progress));
+    byId("progressTrack").setAttribute("aria-valuetext",
+      (demo ? "Sample progress: " : "") + Math.round(progress) + " percent");
+    setText("progressFoot", total > 0
+      ? complete + " of " + total + " clips completed"
+      : complete + " clips completed (total not yet known)");
+    setText("lastUpdate", demo ? "Example only" : "Reported " + updated);
+    setText("jobStatusFact", status);
+    setText("jobClipsFact", total > 0 ? complete + " / " + total : String(complete));
+    setText("jobSizeFact", size);
+    setText("activityTitle", filename);
+    setText("activityDescription", (demo ? "Sample: " : "") + status + ", " +
+      Math.round(progress) + "% complete");
+    setText("activityTime", demo ? "Example only" : updated);
   }
-  function renderJob(job, isOnline, isDemo) {
-    setConnection(isOnline);
-    const status = String(job.status || "queued");
-    const stateClass = status === "failed" ? "failed" : (status === "processing" ? "live" : "idle");
-    el("jobState").className = "state-pill " + stateClass;
-    el("jobState").innerHTML = "<span></span> ";
-    el("jobState").append(document.createTextNode(status[0].toUpperCase() + status.slice(1)));
-    const fileName = String(job.fileName || "Video");
-    text("jobName", fileName);
-    text("jobHint", isDemo ? "Sample job for visual preview. No real files are being processed." : "Processing data received from ClipBridge Windows.");
-    text("activeJobValue", status === "processing" ? "1" : "0");
-    text("activeJobSub", status[0].toUpperCase() + status.slice(1) + " job");
-    text("clipsValue", job.clipsDone || 0); text("clipsSub", (job.clipsTotal || 0) + " expected clips");
-    text("sizeValue", Number(job.fileSizeGb || 0).toFixed(1) + " GB");
-    text("sizeSub", "Current source file");
-    setProgress(job.progress || 0);
-    text("progressFoot", (job.clipsDone || 0) + " of " + (job.clipsTotal || 0) + " clips complete");
-    text("lastUpdate", isDemo ? "Example only" : "Updated " + prettyDate(job.updatedAt));
-    text("lastSync", isDemo ? "Demo preview" : "Last update " + prettyDate(job.updatedAt));
-    text("activityLabel", isDemo ? "Demo activity" : "Last known update");
-    text("activityTitle", fileName);
-    text("activityDescription", "Status: " + status + " · " + Math.round(job.progress || 0) + "% complete");
-    text("activityTime", isDemo ? "Preview" : prettyDate(job.updatedAt));
-    text("accessStatus", isDemo ? "Demo data only" : "Private viewer token");
-    if (isDemo)
-      setMode("DEMO MODE", "Illustrative progress only. Your PC has not been connected to Cloudflare.", "demo", "Exit demo");
-    else if (isOnline)
-      setMode("LIVE", "Status is arriving from the Windows app through Cloudflare.", "live", "Preview demo");
-    else
-      setMode("OFFLINE", "Showing the last job received, but the Windows app is not reporting now.", "", "Preview demo");
+
+  function clearJob() {
+    byId("demoMarker").hidden = true;
+    byId("jobState").dataset.state = "waiting";
+    setText("jobState", "Waiting");
+    setText("jobName", "No video reported");
+    setText("jobHint", "Your latest video will appear here when the Windows app sends an update.");
+    setText("progressText", "Not reported");
+    byId("progressFill").style.width = "0%";
+    byId("progressTrack").setAttribute("aria-valuenow", "0");
+    byId("progressTrack").setAttribute("aria-valuetext", "No job reported");
+    setText("progressFoot", "No progress to display");
+    setText("lastUpdate", "No update yet");
+    setText("jobStatusFact", "Waiting for data");
+    setText("jobClipsFact", "Not reported");
+    setText("jobSizeFact", "Not reported");
+    setText("activityTitle", "No updates received");
+    setText("activityDescription", "Connect to view the last job status reported by ClipBridge.");
+    setText("activityTime", "Not reported");
   }
+
+  function renderDisconnected(description = "Connect with your viewer token to read processing status.") {
+    topState("offline", "Not connected", description);
+    setText("railStatus", "Not reporting");
+    setText("desktopConnection", "Not reporting");
+    setText("accessStatus", "Not authenticated");
+    setText("lastSync", "No update received");
+    clearJob();
+    byId("retryBtn").hidden = true;
+  }
+
+  function renderNoJob() {
+    topState("offline", "Waiting for desktop", "Viewer access is working. ClipBridge Windows has not reported a job yet.");
+    setText("railStatus", "No status received");
+    setText("desktopConnection", "No status received");
+    setText("accessStatus", "Viewer authenticated");
+    setText("lastSync", "Connected to dashboard");
+    byId("retryBtn").hidden = true;
+    clearJob();
+    setText("activityDescription", "Start a video job on your PC with Cloudflare monitoring enabled.");
+  }
+
+  function renderPayload(data) {
+    state.latest = data;
+    state.connected = true;
+    if (!data || !data.job) {
+      renderNoJob();
+      return;
+    }
+    const online = data.online === true;
+    const updated = readableTime(data.job.updatedAt);
+    if (online) {
+      topState("online", "Desktop reporting", "Status is arriving from the Windows app. Updates are checked every 5 seconds.");
+    } else {
+      topState("offline", "Desktop not reporting", "Showing the last job update. The Windows app has not reported recently.");
+    }
+    setText("railStatus", online ? "Reporting" : "Last signal expired");
+    setText("desktopConnection", online ? "Reporting" : "Not reporting");
+    setText("accessStatus", "Viewer authenticated");
+    setText("lastSync", "Last report " + updated);
+    byId("retryBtn").hidden = true;
+    setJob(data.job, { online });
+  }
+
+  function renderError(description) {
+    topState("error", "Connection error", description);
+    setText("railStatus", "Connection error");
+    setText("desktopConnection", "Connection error");
+    setText("lastSync", "Status unavailable");
+    byId("retryBtn").hidden = false;
+    if (!state.latest) clearJob();
+    else if (state.latest.job) setJob(state.latest.job, { online: false });
+  }
+
   function showDemo() {
-    demo = true;
-    renderJob({
+    state.demo = true;
+    byId("previewBtn").setAttribute("aria-pressed", "true");
+    setText("previewBtn", "Exit sample");
+    topState("demo", "Sample preview", "These figures illustrate the layout. They are not from your computer.");
+    setText("railStatus", "Sample only");
+    setText("desktopConnection", "Sample, not connected");
+    setText("accessStatus", state.connected ? "Viewer authenticated" : "Not authenticated");
+    setText("lastSync", "Sample only");
+    byId("retryBtn").hidden = true;
+    setJob({
+      fileName: "example_garden_video.mp4",
       status: "processing",
-      fileName: "garden_video_01.mp4",
-      fileSizeGb: 15,
       progress: 68,
       clipsDone: 26,
       clipsTotal: 38,
+      fileSizeGb: 15,
       updatedAt: new Date().toISOString()
-    }, false, true);
-    text("connectionValue", "Demo");
-    text("connectionSub", "Example data, not a real connection");
+    }, { demo: true, online: false });
   }
-  async function refresh() {
-    if (demo || !token) return;
+
+  async function fetchStatus(token) {
+    let response;
     try {
-      const result = await fetch("/api/status", {
-        headers: {authorization: "Bearer " + token}, cache: "no-store"
+      response = await fetch("/api/status", {
+        headers: { authorization: "Bearer " + token },
+        cache: "no-store",
+        signal: AbortSignal.timeout(12000)
       });
-      if (result.status === 401) {
-        token = "";
-        renderOffline("Viewer token was rejected. Reconnect using your dashboard's viewer token.");
-        return;
-      }
-      if (result.status === 503) {
-        renderOffline("Website deployed. Cloudflare KV and dashboard secrets still need setup.");
-        return;
-      }
-      if (!result.ok) throw Error("HTTP " + result.status);
-      const data = await result.json();
-      lastStatus = data;
-      if (data.job) renderJob(data.job, Boolean(data.online), false);
-      else renderOffline("Private connection ready. Waiting for the Windows app to send its first update.");
     } catch {
-      renderOffline("Cannot reach the Cloudflare status endpoint. Check your network or try again.");
+      return { ok: false, reason: "Could not reach Cloudflare. Check your connection and try again." };
+    }
+    if (response.status === 401)
+      return { ok: false, unauthorized: true, reason: "The viewer token was rejected. Check VIEW_TOKEN in your Worker settings." };
+    if (response.status === 503)
+      return { ok: false, reason: "Cloudflare is missing STATUS_STORE or VIEW_TOKEN. Configure them in Worker settings." };
+    if (!response.ok)
+      return { ok: false, reason: "Cloudflare returned HTTP " + response.status + ". Try again or check the Worker logs." };
+    try {
+      const data = await response.json();
+      if (!data || typeof data !== "object" || !("online" in data))
+        return { ok: false, reason: "Cloudflare returned an unexpected status format." };
+      return { ok: true, data };
+    } catch {
+      return { ok: false, reason: "Cloudflare returned invalid status data." };
     }
   }
+
+  async function refresh() {
+    if (!state.token || state.demo || state.polling) return;
+    state.polling = true;
+    const currentToken = state.token;
+    const result = await fetchStatus(currentToken);
+    state.polling = false;
+    if (state.demo || currentToken !== state.token) return;
+    if (result.ok) {
+      renderPayload(result.data);
+    } else if (result.unauthorized) {
+      state.token = "";
+      state.connected = false;
+      state.latest = null;
+      renderDisconnected(result.reason);
+    } else {
+      renderError(result.reason);
+    }
+  }
+
+  function showError(message) {
+    setText("dialogError", message);
+    byId("dialogError").hidden = false;
+  }
+
   function openDialog() {
-    el("viewerToken").value = "";
-    text("dialogError", "");
-    el("connectDialog").showModal();
+    byId("viewerToken").value = "";
+    byId("dialogError").hidden = true;
+    byId("connectDialog").showModal();
+    byId("viewerToken").focus();
   }
-  el("connectBtn").addEventListener("click", openDialog);
-  el("setupBtn").addEventListener("click", openDialog);
-  el("previewBtn").addEventListener("click", () => {
-    if (demo) {
-      demo = false;
-      if (lastStatus && token && lastStatus.job) renderJob(lastStatus.job, Boolean(lastStatus.online), false);
-      else renderOffline();
-      refresh();
-    } else showDemo();
-  });
-  el("disconnectBtn").addEventListener("click", () => {
-    token = "";
-    lastStatus = null;
-    demo = false;
-    renderOffline();
-    el("connectDialog").close();
-  });
-  el("saveConnectionBtn").addEventListener("click", async () => {
-    const candidate = el("viewerToken").value.trim();
+
+  function closeDialog() {
+    byId("connectDialog").close();
+  }
+
+  async function connect(event) {
+    event.preventDefault();
+    const candidate = byId("viewerToken").value.trim();
     if (candidate.length < 32) {
-      text("dialogError", "Please enter the private viewer token (32 characters or longer).");
+      showError("Enter the private viewer token (32 characters or longer).");
       return;
     }
-    token = candidate;
-    demo = false;
-    await refresh();
-    if (!token) {
-      text("dialogError", "Token was rejected. Check the value configured in Cloudflare.");
+    byId("dialogError").hidden = true;
+    byId("saveConnectionBtn").disabled = true;
+    setText("saveConnectionBtn", "Checking…");
+    const result = await fetchStatus(candidate);
+    byId("saveConnectionBtn").disabled = false;
+    setText("saveConnectionBtn", "Connect");
+    if (!result.ok) {
+      showError(result.reason);
       return;
     }
-    el("connectDialog").close();
+    state.token = candidate;
+    state.demo = false;
+    byId("previewBtn").setAttribute("aria-pressed", "false");
+    setText("previewBtn", "View sample");
+    renderPayload(result.data);
+    closeDialog();
+  }
+
+  byId("connectBtn").addEventListener("click", openDialog);
+  byId("setupBtn").addEventListener("click", openDialog);
+  byId("dialogCloseBtn").addEventListener("click", closeDialog);
+  byId("connectForm").addEventListener("submit", connect);
+  byId("retryBtn").addEventListener("click", refresh);
+  byId("previewBtn").addEventListener("click", () => {
+    if (!state.demo) {
+      showDemo();
+      return;
+    }
+    state.demo = false;
+    byId("previewBtn").setAttribute("aria-pressed", "false");
+    setText("previewBtn", "View sample");
+    if (state.token) {
+      if (state.latest) renderPayload(state.latest);
+      else renderNoJob();
+      refresh();
+    } else renderDisconnected();
   });
-  document.querySelectorAll(".nav-item").forEach(item => {
-    item.addEventListener("click", () => {
-      document.querySelectorAll(".nav-item").forEach(node => node.classList.remove("active"));
-      item.classList.add("active");
+  byId("disconnectBtn").addEventListener("click", () => {
+    state.token = "";
+    state.connected = false;
+    state.latest = null;
+    state.demo = false;
+    byId("previewBtn").setAttribute("aria-pressed", "false");
+    setText("previewBtn", "View sample");
+    closeDialog();
+    renderDisconnected();
+  });
+
+  document.querySelectorAll(".rail-nav a").forEach(link => {
+    link.addEventListener("click", () => {
+      document.querySelectorAll(".rail-nav a").forEach(other => other.removeAttribute("aria-current"));
+      link.setAttribute("aria-current", "page");
     });
   });
-  renderOffline();
-  setInterval(refresh, 5000);
+
+  renderDisconnected();
+  window.setInterval(refresh, 5000);
 })();

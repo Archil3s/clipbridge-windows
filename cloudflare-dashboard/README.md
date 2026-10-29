@@ -2,6 +2,21 @@
 
 This is an **independent ClipBridge dashboard webpage** deployed to the existing fresh Cloudflare Worker project `clipbridge-windows` under the user's Cloudflare account. It does not modify or reuse the existing garden website, Worker, or routes.
 
+## Dashboard design v0.2
+
+The Cloudflare webpage now prioritises the current video, accurate connection state and the latest status message. It includes a clearly labelled sample preview, readable phone layout, accessible dialog and explicit error states. See [design review](DESIGN_REVIEW.md).
+
+The **Worker status API has not changed**. Changes to `main` should redeploy the frontend through the existing Cloudflare GitHub integration, if it is configured and working. A successful GitHub test does not prove the live Cloudflare deployment has updated.
+
+To check the website locally:
+
+```bash
+cd cloudflare-dashboard
+npm install
+npx playwright install chromium
+npm run test:ui
+```
+
 ## What works now
 - Responsive Cloudflare webpage with desktop + phone layout.
 - An explicit, clearly labelled sample-data preview.

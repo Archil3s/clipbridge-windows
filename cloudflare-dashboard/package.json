@@ -1,15 +1,17 @@
 {
   "name": "clipbridge-dashboard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Independent Cloudflare Worker dashboard for ClipBridge Windows",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "check": "node --check src/index.js && node --check public/app.js"
+    "check": "node --check src/index.js && node --check public/app.js",
+    "test:ui": "playwright test"
   },
   "devDependencies": {
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.0.0",
+    "@playwright/test": "^1.56.0"
   }
 }

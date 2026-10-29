@@ -30,3 +30,15 @@ jobs:
           assert config['assets']['directory'] == './public'
           print('Cloudflare Worker configuration and JavaScript syntax validated.')
           PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dashboard test dependencies
+        working-directory: cloudflare-dashboard
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium for browser tests
+        working-directory: cloudflare-dashboard
+        run: npx playwright install --with-deps chromium
+      - name: Test dashboard on desktop and phone
+        working-directory: cloudflare-dashboard
+        run: npm run test:ui
