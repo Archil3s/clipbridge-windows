@@ -4,6 +4,13 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Added
+- Windows B-roll cutter for selecting source footage, previewing it, marking In/Out times, exporting exact-range H.264/AAC MP4 excerpts, and saving clips into a reusable local library.
+- Separate gardening-topic checkboxes for tagging new clips and filtering saved library clips (multiple selected topics match any); tags persist in adjacent local JSON files.
+- Gardening categories: Planting, Harvesting, Watering, Compost & Soil, Pruning, Seedlings, Tools, Wildlife, Weeding and Garden Overview.
+- A Windows-library browser with refresh, clear-filters, category folders and open-in-player actions. Existing sources are preserved; Cloudflare and ChatGPT upload functionality are unchanged.
+
+
 ### Changed
 - Replaced the plain monitor layout with a screenshot-inspired ClipBridge processing console: charcoal workspace, vivid green status accents, compact navigation rail, live metrics, latest video row and configuration inspector.
 - Added progress and completed-clip trend graphs from authenticated status updates observed during the current browser session (no fabricated CPU/GPU measurements or queue history).
