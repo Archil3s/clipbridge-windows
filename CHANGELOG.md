@@ -5,6 +5,13 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 ## [Unreleased]
 
 ### Changed
+- Reworked the Cloudflare monitor around the current video job rather than a promotional landing-page hero, following the repository's Anti Slop and design guidance.
+- Replaced decorative icon and card repetition with a smaller set of functional panels, legible status labels, and a mobile-first processing view.
+- Made the demo preview unmistakable and kept all disconnected, offline, loading, failed and token-error states separate from genuine live status.
+- Improved token connection handling, keyboard/focus behaviour, and accessible progress announcements without changing the existing status API.
+- Added automated Chromium desktop and mobile browser tests for layout, demo, authentication errors and live/offline states.
+
+### Changed
 - Integrated pinned Anti Slop v3.2.24 agent guidance, including UI, accessibility, responsive layout, copywriting and code-comment skills.
 - Added root `AGENTS.md`, project `DESIGN.md`, upstream licence/attribution, and pull-request quality checklist for future contributions.
 - No changes to Windows runtime, Cloudflare deployment or existing UI were made by this integration.
