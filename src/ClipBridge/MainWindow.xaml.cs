@@ -245,7 +245,7 @@ public partial class MainWindow : Window
                     throw;
                 }
             }
-            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open ChatGPT in Edge to attach them.";
+            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. All clips passed the size check. Open ChatGPT in Brave to attach them.";
         }
         catch (OperationCanceledException)
         {
@@ -304,12 +304,12 @@ public partial class MainWindow : Window
         try
         {
             await _chatGptBrowser.OpenAsync();
-            StatusLabel.Text = "Edge opened with a dedicated ClipBridge profile. Sign into ChatGPT there once and choose a conversation.";
+            StatusLabel.Text = "Brave opened with a dedicated ClipBridge profile. Sign into ChatGPT there once and choose a conversation.";
         }
         catch (Exception ex)
         {
             MessageBox.Show(this,
-                "Could not start the managed Edge browser: " + ex.Message +
+                "Could not start the managed Brave browser: " + ex.Message +
                 "\\nYou can still click Manual ChatGPT and attach clips yourself.",
                 "ClipBridge browser", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
@@ -320,7 +320,7 @@ public partial class MainWindow : Window
     {
         if (_uploadPosition >= _uploadQueue.Count)
         {
-            StatusLabel.Text = "All available clips have been offered to ChatGPT. Check Edge before sending.";
+            StatusLabel.Text = "All available clips have been offered to ChatGPT. Check Brave before sending.";
             return;
         }
 
@@ -331,7 +331,7 @@ public partial class MainWindow : Window
             int attempted = await _chatGptBrowser.TryAttachAsync(next);
             _uploadPosition += attempted;
             StatusLabel.Text = $"Attempted to attach {attempted} file(s) to ChatGPT. " +
-                $"{_uploadQueue.Count - _uploadPosition} remain. Verify upload acceptance in Edge and send manually.";
+                $"{_uploadQueue.Count - _uploadPosition} remain. Verify upload acceptance in Brave and send manually.";
         }
         catch (Exception ex)
         {
@@ -355,6 +355,21 @@ public partial class MainWindow : Window
 
     private void OpenChatGptButton_Click(object sender, RoutedEventArgs e)
     {
-        Process.Start(new ProcessStartInfo("https://chatgpt.com/") { UseShellExecute = true });
+        try
+        {
+            var info = new ProcessStartInfo
+            {
+                FileName = BraveBrowserLocator.FindRequired(),
+                UseShellExecute = true
+            };
+            info.ArgumentList.Add("https://chatgpt.com/");
+            Process.Start(info);
+            StatusLabel.Text = "ChatGPT opened in your regular Brave browser. Drag and attach clips manually.";
+        }
+        catch (Exception ex) when (ex is IOException or System.ComponentModel.Win32Exception)
+        {
+            MessageBox.Show(this, ex.Message, "Open ChatGPT in Brave",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 }
