@@ -127,7 +127,7 @@
                         Click="ChatGptLoginButton_Click" />
                 <Button x:Name="AttachButton" Content="Attach next 3 clips (experimental)" IsEnabled="False"
                         Click="AttachButton_Click" />
-                <Button Content="Manual ChatGPT" Click="OpenChatGptButton_Click" />
+                <Button Content="Manual ChatGPT (Brave)" Click="OpenChatGptButton_Click" />
             </WrapPanel>
             <TextBlock Text="For reusable garden footage, open B-roll cutter &amp; library. Mark In / Out, tag planting, harvesting, pruning and more, then filter saved clips with checkboxes."
                        Foreground="#A4F4DC" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0" />
