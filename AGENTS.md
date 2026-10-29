@@ -32,6 +32,21 @@ Project workflow convention: apply the rules **during** new implementation. If a
 The third-party sources are pinned and attributed in [third_party/anti-slop/README.md](third_party/anti-slop/README.md). Changes to the vendored files should happen only as an intentional, reviewed upstream update.
 <!-- antislop:end -->
 
+## Additional design and web-quality reviews
+
+Use the curated **Impeccable** guidance and **Web Quality Skills** only when relevant, rather than loading every rulebook for every code change:
+
+- **UI and UX critique or refinement:** [skills/clipbridge-design-review/SKILL.md](skills/clipbridge-design-review/SKILL.md), supported by pinned Impeccable critique, operate, polish, audit and craft-floor references.
+- **Cloudflare web performance/accessibility and source audits:** [skills/web-quality-audit/SKILL.md](skills/web-quality-audit/SKILL.md).
+- **Accessibility changes and WCAG reviews:** [skills/web-accessibility/SKILL.md](skills/web-accessibility/SKILL.md) and its references.
+- **Web performance measurement context:** [skills/performance/references/MEASUREMENT.md](skills/performance/references/MEASUREMENT.md).
+
+These are pinned and attributed under [third_party/design-guidance/README.md](third_party/design-guidance/README.md). The Impeccable material is a curated playbook subset, **not its CLI or automatic detector**. Do not claim that an upstream CLI, live Lighthouse audit or real-user measurements ran unless it actually happened.
+
+Precedence: explicit user brief and ClipBridge security/data requirements first, then DESIGN.md and Anti Slop's hard gates, then targeted design/quality playbooks. For the private monitor, prioritize honest state, user task completion, accessibility and privacy over marketing or SEO optimization.
+
+When the Cloudflare dashboard changes, run the existing Playwright tests, including the accessibility scan. Report unresolved violations separately from actual verified passes.
+
 ## Before merging
 
 1. Link the change to a requirement, issue or bug and avoid unrelated refactors.
