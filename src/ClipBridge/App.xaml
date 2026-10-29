@@ -1,0 +1,27 @@
+<Application x:Class="ClipBridge.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <SolidColorBrush x:Key="WindowBackground" Color="#111827" />
+        <SolidColorBrush x:Key="PanelBackground" Color="#1F2937" />
+        <SolidColorBrush x:Key="PrimaryAccent" Color="#38BDF8" />
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#F9FAFB" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="15,9" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Background" Value="#334155" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Background" Value="#0F172A" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#475569" />
+        </Style>
+    </Application.Resources>
+</Application>
