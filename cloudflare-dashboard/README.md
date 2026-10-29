@@ -2,6 +2,14 @@
 
 This is an **independent ClipBridge dashboard webpage** deployed to the existing fresh Cloudflare Worker project `clipbridge-windows` under the user's Cloudflare account. It does not modify or reuse the existing garden website, Worker, or routes.
 
+## Dashboard v0.5 — processing console
+
+The ClipBridge website now follows a denser professional video-processing interface: narrow navigation rail on desktop, phone bottom navigation, dark panels, vivid green live status, real progress/clip metric cards and an always-visible configuration inspector. It preserves `GET /api/health`, `GET /api/status`, auth, poll interval, manual refresh, retry and sample mode.
+
+**Data limits:** The Worker currently reports the **latest** video job only; it does not report a complete video queue, source thumbnails, CPU load, GPU VRAM or configuration controls. The interface explicitly indicates those limits and does not invent readings. Trend charts use real updates received by this browser session; opening a fresh tab begins with no trend history. Sample charts are clearly marked and never appear as real status.
+
+The separate gardening Worker and source video processing remain unchanged. Cloudflare KV and secret setup is still required to receive real status from the PC.
+
 ## Dashboard v0.4 premium visual redesign
 
 The website uses a compact header, a prominent processing ring, and improved mobile hierarchy. It retains existing `/api/status` and `/api/health` routes, authenticated viewer-token connection, manual refresh, sample preview, and onboarding workflow.
