@@ -116,7 +116,6 @@ public sealed class BraveUploadBridge : IAsyncDisposable
         if (_running) return;
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseKestrel(options => options.Listen(IPAddress.Loopback, Port));
-        await using var test = new MemoryStream(); // Keep bridge construction side-effect free.
         WebApplication app = builder.Build();
 
         app.Use(async (context, next) =>
