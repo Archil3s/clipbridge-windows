@@ -28,6 +28,8 @@ The default library folder is `Videos/ClipBridge/B-Roll` under your Windows user
 
 **Saving tags and filtering are separate.** The upper checkboxes label the shot being exported. The bottom checkboxes filter previously saved shots. Choose two or more filters to show clips matching **any** selected topic (OR logic). Clear all filters to show the full library, including untagged videos. Use **Refresh library** after externally copying files into the folder. Double-click an item to open it in the default Windows video player.
 
+**Tag older footage too:** Select an existing saved clip, tick the relevant topics in the upper checkbox group, and click **Apply checked topic tags to selected saved clip**. The MP4 does not need to be re-exported.
+
 Each MP4 has a small adjacent `.broll.json` file storing its title, original *file name* (not full path), category, selected tags, start/end seconds, and save date. Keep the sidecar with its MP4 if you move or back up the library; no account, server or internet connection is required.
 
 ## Current limitations
