@@ -31,6 +31,12 @@ The third-party FFmpeg package is GPLv3 licensed; it is downloaded directly by t
 
 Microsoft Edge is required only for optional experimental browser-assisted attachments. There is no API key.
 
+## Design and AI coding guidance
+
+Future Codex or other coding-agent contributions should start with [AGENTS.md](AGENTS.md) and the existing product direction in [DESIGN.md](DESIGN.md). ClipBridge vendors the [Anti Slop](https://github.com/miqdadbadjuber/anti-slop) rulebook and selected skills at a [pinned, attributed upstream revision](third_party/anti-slop/README.md).
+
+The rules help avoid generic interface copy, decorative UI with no purpose, fake success metrics, inaccessible controls and redundant comments. They do **not** automatically redesign the Windows app or Cloudflare dashboard, change the runtime, or remove the need for actual UI and video tests.
+
 ## Development requirements
 
 - Windows 10/11, x64
