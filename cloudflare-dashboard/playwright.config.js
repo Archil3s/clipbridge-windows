@@ -11,7 +11,7 @@ export default defineConfig({
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1365, height: 900 } } },
-    { name: "phone", use: { ...devices["iPhone 13"], defaultBrowserType: "chromium" } }
+    { name: "phone", use: { ...devices["iPhone 13"], browserName: "chromium" } }
   ],
   webServer: {
     command: "python3 -m http.server 4173 --bind 127.0.0.1 --directory public",
