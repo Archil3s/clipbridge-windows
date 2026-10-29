@@ -130,8 +130,27 @@
             </WrapPanel>
             <TextBlock Text="For reusable garden footage, open B-roll cutter &amp; library. Mark In / Out, tag planting, harvesting, pruning and more, then filter saved clips with checkboxes."
                        Foreground="#A4F4DC" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0" />
-            <TextBlock Text="ClipBridge opens your normal Brave browser without automation or special security flags. Use Show next 3 clips to locate files; select and attach them manually in ChatGPT. No uploads or sends happen automatically."
+            <TextBlock Text="Open ChatGPT in normal Brave to sign in. An optional extension can attach video clips automatically, but you must review the attachments and send messages yourself."
                        Foreground="#94A3B8" FontSize="11" TextWrapping="Wrap" Margin="0,9,0,0" />
+            <Border Margin="0,12,0,0" Padding="12" BorderThickness="1" BorderBrush="#36624E"
+                    CornerRadius="10" Background="#14271E">
+                <StackPanel>
+                    <TextBlock Text="Brave auto-attach (optional)" FontWeight="Bold" Foreground="#A4F4DC" />
+                    <CheckBox x:Name="AutoAttachEnabledBox"
+                              Content="Allow ClipBridge to offer prepared clips to the Brave extension"
+                              Checked="AutoAttachEnabledBox_Checked" Unchecked="AutoAttachEnabledBox_Unchecked"
+                              Foreground="White" Margin="0,6,0,8" />
+                    <WrapPanel>
+                        <Button x:Name="CopyBridgeKeyButton" Content="Copy extension pairing key"
+                                Click="CopyBridgeKeyButton_Click" IsEnabled="False" />
+                        <Button x:Name="NextBridgeBatchButton" Content="Allow next 3 clips"
+                                Click="NextBridgeBatchButton_Click" IsEnabled="False" />
+                    </WrapPanel>
+                    <TextBlock x:Name="BraveBridgeStatusLabel"
+                               Text="Disabled. Enable the bridge and install the ClipBridge Brave extension."
+                               FontSize="11" Foreground="#C4D7CD" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </Grid>
 </Window>
