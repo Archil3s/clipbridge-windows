@@ -267,6 +267,7 @@ public partial class MainWindow : Window
     private void SetBusy(bool busy)
     {
         StartButton.IsEnabled = !busy;
+        BRollButton.IsEnabled = !busy;
         AddVideosButton.IsEnabled = !busy;
         ClearButton.IsEnabled = !busy;
         TargetSizeBox.IsEnabled = !busy;
@@ -283,6 +284,12 @@ public partial class MainWindow : Window
     {
         _cancellation?.Cancel();
         _setupCancellation?.Cancel();
+    }
+
+    private void BRollButton_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new BRollWindow { Owner = this };
+        window.Show();
     }
 
     private void OpenOutputButton_Click(object sender, RoutedEventArgs e)
