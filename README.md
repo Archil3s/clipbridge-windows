@@ -19,6 +19,14 @@ ClipBridge is a Windows-only C# / WPF desktop application that prepares large vi
 - **Experimental** Playwright browser-assisted ChatGPT attachment: starts Microsoft Edge with a separate persistent local profile, which you sign into once yourself. Attempts to attach up to three files per action. **You must check attachment status and send manually**.
 - Manual fallback: open ChatGPT and drag clips into the browser.
 
+## B-roll cutter and gardening library (new preview feature)
+
+Select **B-roll cutter & library** in the Windows app to open a video preview, mark **In** and **Out** points, and export short, reusable shots. Give each clip a name and tick one or more gardening topics such as **Planting**, **Harvesting**, **Pruning**, **Seedlings**, **Tools** or **Compost & Soil**. ClipBridge stores the MP4 in a local category folder with a small adjacent JSON tag file.
+
+The library has a second set of **topic checkboxes for filtering saved clips**. Checking several topics shows clips matching any checked topic; no selection shows all saved clips. No AI scene recognition is claimed: you tag shots manually when saving them. The original remains untouched.
+
+See [B-roll and gardening filters guide](docs/BRollLibrary.md) for step-by-step instructions, folder details and preview limitations.
+
 ## Install from GitHub Actions
 
 Go to **Actions → Build and package Windows app → latest successful run → Artifacts**. Download `ClipBridge-Installer`, unzip the artifact and run `ClipBridge-Setup.exe`. Windows SmartScreen may warn that the installer is not code-signed.
