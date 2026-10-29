@@ -5,6 +5,12 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 ## [Unreleased]
 
 ### Added
+- Cloudflare dashboard v0.3 adds a first-time connection guide with the exact Worker root, KV binding, and two secret names.
+- Added an unauthenticated Worker API health check that explicitly does **not** imply storage, viewer access, or a connected PC.
+- Added manual refresh for authenticated status views and a visible loading state while checking for updates.
+- Improved recovery guidance for missing Worker deployments and expanded browser tests for setup and connection diagnostics.
+
+### Added
 - Pinned curated Impeccable critique/polish guidance and Web Quality Skills accessibility/audit playbooks, with upstream licences and versioned attribution.
 - Added an automated axe-core accessibility check to the Cloudflare dashboard's Playwright test suite for each future UI change.
 - Updated coding-agent instructions to use targeted design reviews without changing runtime UI frameworks or adding unverified upstream tools.
