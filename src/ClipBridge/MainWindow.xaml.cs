@@ -19,6 +19,7 @@ public partial class MainWindow : Window
 
     private readonly ObservableCollection<string> _videos = [];
     private CancellationTokenSource? _cancellation;
+    private CancellationTokenSource? _setupCancellation;
     private readonly ChatGptBrowser _chatGptBrowser = new();
     private readonly List<string> _uploadQueue = [];
     private int _uploadPosition;
@@ -27,8 +28,39 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         VideoList.ItemsSource = _videos;
+        Loaded += Window_Loaded;
         OutputFolderBox.Text = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "ClipBridge");
+    }
+
+    private async void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        _setupCancellation = new CancellationTokenSource();
+        SetBusy(true);
+        try
+        {
+            await DependencyInstaller.EnsureInstalledAsync(
+                new Progress<string>(message => StatusLabel.Text = message), _setupCancellation.Token);
+            var splitter = new VideoSplitter();
+            await splitter.VerifyToolsAsync(_setupCancellation.Token);
+            StatusLabel.Text = "Ready — video engine installed and verified.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusLabel.Text = "Video engine setup cancelled. Click Split videos to retry.";
+        }
+        catch (Exception ex)
+        {
+            StatusLabel.Text = "Video engine setup failed. Check your internet connection; click Split videos to retry.";
+            MessageBox.Show(this, ex.Message, "ClipBridge first-run setup",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _setupCancellation.Dispose();
+            _setupCancellation = null;
+            SetBusy(false);
+        }
     }
 
     private void AddVideos(IEnumerable<string> paths)
@@ -99,7 +131,6 @@ public partial class MainWindow : Window
 
         _cancellation = new CancellationTokenSource();
         SetBusy(true);
-        var splitter = new VideoSplitter();
         _uploadQueue.Clear();
         _uploadPosition = 0;
         AttachButton.IsEnabled = false;
@@ -110,6 +141,9 @@ public partial class MainWindow : Window
         try
         {
             Directory.CreateDirectory(OutputFolderBox.Text);
+            await DependencyInstaller.EnsureInstalledAsync(
+                new Progress<string>(message => StatusLabel.Text = message), _cancellation.Token);
+            var splitter = new VideoSplitter();
             await splitter.VerifyToolsAsync(_cancellation.Token);
 
             foreach (string file in files)
@@ -162,7 +196,11 @@ public partial class MainWindow : Window
         if (!busy) Progress.IsIndeterminate = false;
     }
 
-    private void CancelButton_Click(object sender, RoutedEventArgs e) => _cancellation?.Cancel();
+    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    {
+        _cancellation?.Cancel();
+        _setupCancellation?.Cancel();
+    }
 
     private void OpenOutputButton_Click(object sender, RoutedEventArgs e)
     {
@@ -218,6 +256,7 @@ public partial class MainWindow : Window
     protected override async void OnClosed(EventArgs e)
     {
         _cancellation?.Cancel();
+        _setupCancellation?.Cancel();
         await _chatGptBrowser.DisposeAsync();
         base.OnClosed(e);
     }
