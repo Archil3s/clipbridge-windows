@@ -3,204 +3,196 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0a1319">
-  <meta name="description" content="ClipBridge video processing monitor. View trusted progress, job status, and connection health from your phone.">
-  <title>ClipBridge · Video monitor</title>
+  <meta name="theme-color" content="#090d10">
+  <meta name="description" content="ClipBridge: track real Windows video-processing progress, completed clips, and Cloudflare connection status.">
+  <title>ClipBridge · Processing console</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to processing status</a>
-  <div class="app-shell">
-    <header class="site-header">
-      <a class="brand" href="#main" aria-label="ClipBridge overview">
-        <svg class="brand-mark" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
-          <rect x="0" y="0" width="44" height="44" rx="13" fill="#a4f4dc"/>
-          <rect x="11.5" y="11.5" width="21" height="21" rx="4" stroke="#15342d" stroke-width="2.6" fill="none"/>
-          <path d="M18.5 12.5v19M25.5 12.5v19" stroke="#15342d" stroke-width="2.6"/>
-          <circle cx="22" cy="22" r="3.5" fill="#15342d"/>
-        </svg>
-        <span class="brand-word">clipbridge<span>.</span></span>
+  <div class="app-frame">
+    <aside class="icon-rail" aria-label="Primary navigation">
+      <a class="rail-brand" href="#main" aria-label="ClipBridge overview">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" fill="currentColor" opacity=".16"/><rect x="9.5" y="9.5" width="21" height="21" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M16 10v20M24 10v20" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="20" cy="20" r="3.2" fill="currentColor"/></svg>
       </a>
       <nav class="rail-nav" aria-label="Dashboard sections">
-        <a href="#main" aria-current="page">Overview</a>
-        <a href="#job">Current job</a>
-        <a href="#connection">Connection</a>
-        <a href="#activity">Activity</a>
+        <a href="#main" aria-current="page" title="Overview" aria-label="Overview"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg><span>Overview</span></a>
+        <a href="#job" title="Current job" aria-label="Current job"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Current job</span></a>
+        <a href="#connection" title="Connection" aria-label="Connection"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12a6 6 0 0 1 12 0"/><path d="M9 12a3 3 0 0 1 6 0"/><path d="M12 15v5"/><circle cx="12" cy="12" r="1"/></svg><span>Connection</span></a>
+        <a href="#activity" title="Activity" aria-label="Activity"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg><span>Activity</span></a>
       </nav>
-      <div class="topbar-actions">
-        <span id="lastSync" class="sync-time">No update received</span>
-        <button class="button button-quiet" id="refreshBtn" type="button" disabled aria-label="Refresh processing status" title="Connect to refresh status">Refresh</button>
-        <button class="button button-primary" id="connectBtn" type="button">Connect dashboard</button>
-      </div>
-    </header>
+      <div class="rail-bottom"><span class="status-light" id="railLight" aria-hidden="true"></span><span id="railStatus" class="sr-only">Not reporting</span></div>
+    </aside>
 
-    <main id="main">
-      <div class="page-heading">
-        <div>
-          <p class="section-label">CLIPBRIDGE / REMOTE MONITOR</p>
-          <h1>Video processing<span class="heading-dot">.</span></h1>
-          <p class="page-description">Your Windows video jobs, at a glance. No footage leaves your PC.</p>
+    <div class="console">
+      <header class="console-header">
+        <div class="console-identity">
+          <div class="console-title"><span class="product-name">ClipBridge</span><span class="section-green">/ Processing console</span><span class="version-tag">v0.5 preview</span></div>
+          <p class="console-subtitle">Windows processing status · Cloudflare monitor</p>
         </div>
-        <a class="documentation-link" href="#setupGuide">Set up monitoring <span aria-hidden="true">↗</span></a>
-      </div>
+        <div class="topbar-actions">
+          <span id="lastSync" class="sync-time">No update received</span>
+          <button class="button button-quiet" id="refreshBtn" type="button" disabled aria-label="Refresh processing status">Refresh</button>
+          <button class="button button-primary" id="connectBtn" type="button">Connect dashboard</button>
+        </div>
+      </header>
 
-      <section class="hero-panel" id="job" aria-labelledby="jobHeading">
-        <div class="hero-main">
-          <div class="hero-detail">
-            <section id="statePanel" class="state-panel" aria-labelledby="stateTitle" data-state="offline">
-              <span class="status-light state-light" id="stateLight" aria-hidden="true"></span>
-              <div class="state-copy" role="status" aria-live="polite" aria-atomic="true">
-                <h2 id="stateTitle">Not connected</h2>
-                <p id="stateDescription">Connect with your viewer token to read processing status.</p>
+      <main id="main">
+        <div class="work-layout">
+          <div class="work-main">
+            <section class="overview-stats" aria-label="Performance overview">
+              <article class="metric-card" aria-labelledby="metricProcessingHeading">
+                <div class="metric-header"><span id="metricProcessingHeading">VIDEO PROGRESS</span><span class="metric-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l4 2"/></svg></span></div>
+                <div class="metric-body">
+                  <div class="metric-numbers"><strong id="metricProgress">—</strong><span id="metricProgressUnit">Waiting for job</span></div>
+                  <span class="metric-tag" id="metricProgressTag">NO DATA</span>
+                </div>
+                <div class="chart" role="img" aria-label="Progress history from this browser session">
+                  <svg viewBox="0 0 320 70" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="chart-grid" d="M0 55H320M0 30H320M0 5H320"/>
+                    <path id="progressTrend" class="chart-line" d=""/>
+                  </svg>
+                  <span class="chart-empty" id="progressTrendEmpty">Trend appears when live updates arrive</span>
+                </div>
+              </article>
+              <article class="metric-card" aria-labelledby="metricClipsHeading">
+                <div class="metric-header"><span id="metricClipsHeading">OUTPUT CLIPS</span><span class="metric-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16M9 5l3 5M15 5l3 5"/></svg></span></div>
+                <div class="metric-body">
+                  <div class="metric-numbers"><strong id="metricClips">—</strong><span id="metricClipsUnit">No output reported</span></div>
+                  <span class="metric-tag" id="metricClipsTag">WAITING</span>
+                </div>
+                <div class="chart" role="img" aria-label="Completed clip count history from this browser session">
+                  <svg viewBox="0 0 320 70" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="chart-grid" d="M0 55H320M0 30H320M0 5H320"/>
+                    <path id="clipsTrend" class="chart-line" d=""/>
+                  </svg>
+                  <span class="chart-empty" id="clipsTrendEmpty">No clip history yet</span>
+                </div>
+              </article>
+            </section>
+
+            <section class="queue-panel" id="job" aria-labelledby="jobHeading">
+              <div class="section-heading">
+                <div><h1 id="jobHeading">Processing queue</h1><span class="queue-count" id="queueCount">0 reported</span></div>
+                <span class="read-only-label">READ-ONLY MONITOR</span>
               </div>
-              <div class="state-actions">
-                <button id="retryBtn" class="text-action" type="button" hidden>Retry connection</button>
-                <button id="previewBtn" class="text-action" type="button" aria-pressed="false">View sample</button>
+              <section id="statePanel" class="state-panel" aria-labelledby="stateTitle" data-state="offline">
+                <span class="status-light state-light" id="stateLight" aria-hidden="true"></span>
+                <div class="state-copy" role="status" aria-live="polite" aria-atomic="true">
+                  <h2 id="stateTitle">Not connected</h2>
+                  <p id="stateDescription">Connect with your viewer token to read processing status.</p>
+                </div>
+                <div class="state-actions">
+                  <button id="retryBtn" class="text-action" type="button" hidden>Retry connection</button>
+                  <button id="previewBtn" class="text-action" type="button" aria-pressed="false">View sample</button>
+                </div>
+              </section>
+              <div id="demoMarker" class="demo-marker" hidden>Sample data, not your computer</div>
+
+              <article class="video-job" aria-labelledby="jobName">
+                <div class="video-thumb" aria-hidden="true"><span class="thumb-badge">NO PREVIEW</span>
+                  <svg viewBox="0 0 80 60"><rect x="1" y="1" width="78" height="58" rx="6" fill="#15251d"/><path d="M0 42L22 20l11 11L50 8l30 32v20H0Z" fill="#244d39"/><path d="M0 54L31 23l18 17L67 20l13 16v24H0Z" fill="#356a46"/><circle cx="23" cy="15" r="8" fill="#88b88e"/><rect x="5" y="5" width="15" height="9" rx="2" fill="#0c1410"/><text x="12.5" y="11.4" text-anchor="middle" fill="#b5f9b9" font-size="5" font-family="monospace">MP4</text></svg>
+                </div>
+                <div class="video-job-main">
+                  <div class="video-top">
+                    <div class="video-info">
+                      <p class="micro-label">LATEST REPORTED SOURCE</p>
+                      <h3 id="jobName">No video reported</h3>
+                    </div>
+                    <span id="jobState" class="job-state" data-state="waiting">Waiting</span>
+                  </div>
+                  <p id="jobHint" class="job-hint">Your latest video will appear here when the Windows app sends an update.</p>
+                  <div class="progress-header">
+                    <span id="progressFoot">No progress to display</span>
+                    <strong id="progressText">Not reported</strong>
+                  </div>
+                  <div id="progressTrack" class="progress-track" role="progressbar" aria-label="Video processing progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="No job reported">
+                    <div id="progressFill" class="progress-fill"></div>
+                  </div>
+                  <div class="video-footer"><span id="lastUpdate">No update yet</span><span id="ringHelp">Waiting for video data</span></div>
+                </div>
+              </article>
+
+              <dl class="job-facts">
+                <div><dt>JOB STATUS</dt><dd id="jobStatusFact">Waiting for data</dd></div>
+                <div><dt>CLIPS COMPLETED</dt><dd id="jobClipsFact">Not reported</dd></div>
+                <div><dt>SOURCE SIZE</dt><dd id="jobSizeFact">Not reported</dd></div>
+              </dl>
+
+              <div class="queue-empty">
+                <div class="queue-empty-graphic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4zM8 7V5h8v2M9 13h6"/></svg></div>
+                <p>ClipBridge currently reports the latest video job, not the full queue.</p>
+                <span>Additional jobs will need Windows app telemetry support.</span>
               </div>
             </section>
-            <div class="job-ident">
-              <div class="panel-head">
-                <div>
-                  <p class="section-label">CURRENT WORK</p>
-                  <h2 id="jobHeading">Processing job</h2>
+          </div>
+
+          <aside class="inspector" id="connection" aria-labelledby="connectionHeading">
+            <div class="inspector-head"><h2 id="connectionHeading">Configuration</h2><span class="inspector-dot" aria-hidden="true"></span></div>
+            <div class="inspector-inner">
+              <div class="inspector-tabs" aria-label="Connection panel"><span>Monitoring</span><span class="selected-tab">Status</span></div>
+              <div class="inspector-section">
+                <p class="section-label">CONNECTION HEALTH</p>
+                <dl class="connection-facts">
+                  <div><dt><span class="fact-dot" id="workerDot" aria-hidden="true"></span>Worker API</dt><dd id="workerConnection">Not checked</dd></div>
+                  <div><dt>Windows PC</dt><dd id="desktopConnection">Not reporting</dd></div>
+                  <div><dt>Viewer access</dt><dd id="accessStatus">Not authenticated</dd></div>
+                  <div><dt>Refresh interval</dt><dd>5 seconds</dd></div>
+                  <div><dt>Video transfer</dt><dd>None</dd></div>
+                </dl>
+                <div class="connection-actions">
+                  <button id="setupBtn" class="button button-primary" type="button">Enter viewer token</button>
+                  <button id="checkWorkerBtn" class="button button-quiet" type="button">Check Worker API</button>
                 </div>
-                <span id="jobState" class="job-state" data-state="waiting">Waiting</span>
+                <p id="workerCheckNote" class="worker-check-note" role="status" aria-live="polite">The Worker API check does not need your private token.</p>
               </div>
-              <div id="demoMarker" class="demo-marker" hidden>Sample data, not your computer</div>
-              <p class="file-label">SOURCE FILE</p>
-              <h3 id="jobName" class="file-name">No video reported</h3>
-              <p class="file-note" id="jobHint">Your latest video will appear here when the Windows app sends an update.</p>
-            </div>
-          </div>
-          <div class="hero-visual" aria-label="Processing summary">
-            <div class="ring-frame">
-              <div class="progress-ring" id="jobRing" aria-hidden="true">
-                <div class="ring-core">
-                  <span id="ringValue">—</span>
-                  <small id="ringCaption">No job yet</small>
+              <div class="inspector-section current-progress">
+                <p class="section-label">CURRENT PROCESSING</p>
+                <div class="compact-progress">
+                  <div class="progress-ring" id="jobRing" aria-hidden="true">
+                    <div class="ring-core"><span id="ringValue">—</span><small id="ringCaption">No job yet</small></div>
+                  </div>
+                  <div><strong>Current job</strong><p>Live when your PC reports a video.</p></div>
                 </div>
               </div>
-              <p class="ring-help" id="ringHelp">Waiting for video data</p>
+              <details class="inspector-section setup-guide" id="setupGuide" open>
+                <summary>First-time setup</summary>
+                <ol class="setup-steps">
+                  <li><strong>Deploy the Worker</strong><p>Set the build root to <code>cloudflare-dashboard</code>.</p></li>
+                  <li><strong>Configure storage</strong><p>Bind KV as <code>STATUS_STORE</code>, then add separate <code>VIEW_TOKEN</code> and <code>INGEST_TOKEN</code> secrets.</p></li>
+                  <li><strong>Connect the PC</strong><p>Use <code>INGEST_TOKEN</code> in Windows and <code>VIEW_TOKEN</code> on this page.</p></li>
+                </ol>
+                <a class="setup-doc-link" href="https://github.com/Archil3s/clipbridge-windows/tree/main/cloudflare-dashboard" target="_blank" rel="noopener noreferrer">Full configuration guide</a>
+              </details>
             </div>
-          </div>
+          </aside>
         </div>
-        <div class="hero-bottom">
-          <div class="progress-wrap">
-            <div class="progress-header">
-              <span>Processing progress</span>
-              <strong id="progressText" class="progress-number">Not reported</strong>
-            </div>
-            <div id="progressTrack" class="progress-track" role="progressbar" aria-label="Video processing progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="No job reported">
-              <div id="progressFill" class="progress-fill"></div>
-            </div>
-            <div class="progress-details">
-              <span id="progressFoot">No progress to display</span>
-              <span id="lastUpdate">No update yet</span>
-            </div>
-          </div>
-          <dl class="job-facts">
-            <div><dt>Job status</dt><dd id="jobStatusFact">Waiting for data</dd></div>
-            <div><dt>Clips completed</dt><dd id="jobClipsFact">Not reported</dd></div>
-            <div><dt>Source size</dt><dd id="jobSizeFact">Not reported</dd></div>
-          </dl>
-        </div>
-      </section>
 
-      <div class="detail-grid">
-        <section id="connection" class="connection-panel panel" aria-labelledby="connectionHeading">
-          <div class="panel-head">
-            <div>
-              <p class="section-label">YOUR SETUP</p>
-              <h2 id="connectionHeading">Connection health</h2>
-            </div>
-            <span class="panel-monogram" aria-hidden="true">01</span>
-          </div>
-          <p class="connection-intro">See what is responding and what still needs to be connected.</p>
-          <dl class="connection-facts">
-            <div><dt><span class="fact-dot" id="workerDot" aria-hidden="true"></span>Worker API</dt><dd id="workerConnection">Not checked</dd></div>
-            <div><dt><span class="status-light" id="railLight" aria-hidden="true"></span>Windows PC</dt><dd id="desktopConnection">Not reporting</dd></div>
-            <div><dt>Viewer access</dt><dd id="accessStatus">Not authenticated</dd></div>
-            <div><dt>Refresh</dt><dd>Every 5 seconds when connected</dd></div>
-          </dl>
-          <div class="connection-actions">
-            <button id="setupBtn" class="button button-secondary" type="button">Enter viewer token</button>
-            <button id="checkWorkerBtn" class="button button-quiet" type="button">Check Worker API</button>
-          </div>
-          <p id="workerCheckNote" class="worker-check-note" role="status" aria-live="polite">The API check does not need your private token.</p>
+        <section class="activity-bar" id="activity" aria-labelledby="activityHeading">
+          <div class="activity-heading"><span id="activitySymbol" class="activity-symbol" aria-hidden="true"></span><h2 id="activityHeading">Latest activity</h2></div>
+          <div class="activity-description"><strong id="activityTitle">No updates received</strong><p id="activityDescription">Connect to view the last job status reported by ClipBridge.</p></div>
+          <time id="activityTime">Not reported</time>
         </section>
-
-        <section class="activity-section panel" id="activity" aria-labelledby="activityHeading">
-          <div class="panel-head">
-            <div>
-              <p class="section-label">LAST REPORTED</p>
-              <h2 id="activityHeading">Latest activity</h2>
-            </div>
-            <span class="panel-monogram" aria-hidden="true">02</span>
-          </div>
-          <div class="activity-row">
-            <span id="activitySymbol" class="activity-symbol" aria-hidden="true"></span>
-            <div>
-              <strong id="activityTitle">No updates received</strong>
-              <p id="activityDescription">Connect to view the last job status reported by ClipBridge.</p>
-            </div>
-          </div>
-          <span id="activityTime" class="activity-time">Not reported</span>
-          <p class="private-note">ClipBridge sends status metadata only; your videos stay local.</p>
-        </section>
-      </div>
-
-      <section class="setup-guide panel" id="setupGuide" aria-labelledby="setupHeading">
-        <div class="setup-heading">
-          <div>
-            <p class="section-label">GET STARTED</p>
-            <h2 id="setupHeading">Connect in three steps</h2>
-          </div>
-          <span class="setup-hint">About your setup</span>
-        </div>
-        <ol class="setup-steps">
-          <li>
-            <span class="step-index" aria-hidden="true">01</span>
-            <div><strong>Deploy the Worker</strong><p>Use <code>cloudflare-dashboard</code> as the root folder for the separate <code>clipbridge-windows</code> Worker.</p></div>
-          </li>
-          <li>
-            <span class="step-index" aria-hidden="true">02</span>
-            <div><strong>Set up private status storage</strong><p>Bind a Workers KV namespace as <code>STATUS_STORE</code>. Create separate <code>VIEW_TOKEN</code> and <code>INGEST_TOKEN</code> secrets.</p></div>
-          </li>
-          <li>
-            <span class="step-index" aria-hidden="true">03</span>
-            <div><strong>Connect both devices</strong><p>Use <code>INGEST_TOKEN</code> in ClipBridge Windows and <code>VIEW_TOKEN</code> on this page.</p></div>
-          </li>
-        </ol>
-        <a class="setup-doc-link" href="https://github.com/Archil3s/clipbridge-windows/tree/main/cloudflare-dashboard" target="_blank" rel="noopener noreferrer">Read the configuration guide <span aria-hidden="true">↗</span></a>
-      </section>
-      <footer><span>ClipBridge monitor · Dashboard v0.4</span><span>Read-only monitoring · Windows stays in control</span></footer>
-    </main>
+        <footer><span>ClipBridge console v0.5 · Latest status only</span><span>Video processing stays on Windows</span></footer>
+      </main>
+    </div>
   </div>
-
-  <div class="sr-only" id="railStatus">Not reporting</div>
-
   <dialog id="connectDialog" aria-labelledby="dialogTitle" aria-describedby="dialogDescription">
     <div class="dialog-inner">
-      <div class="dialog-top">
-        <h2 id="dialogTitle">Connect dashboard</h2>
-        <button id="dialogCloseBtn" class="close-button" type="button" aria-label="Close settings">Close</button>
-      </div>
+      <div class="dialog-top"><h2 id="dialogTitle">Connect dashboard</h2><button id="dialogCloseBtn" class="close-button" type="button" aria-label="Close settings">Close</button></div>
       <p id="dialogDescription">Enter the private <code>VIEW_TOKEN</code> from your Cloudflare Worker. This is not your Cloudflare account API token.</p>
       <form id="connectForm">
         <label for="viewerToken">Viewer token</label>
         <input id="viewerToken" type="password" autocomplete="off" spellcheck="false" required minlength="32" aria-describedby="tokenHint dialogError" placeholder="At least 32 characters">
-        <p class="field-help" id="tokenHint">Kept in this browser tab's memory only. You'll enter it again after reloading.</p>
+        <p class="field-help" id="tokenHint">Held in this browser tab's memory only. You'll enter it again after reloading.</p>
         <p id="dialogError" class="dialog-error" role="alert" hidden></p>
-        <div class="dialog-actions">
-          <button id="disconnectBtn" class="button button-outline" type="button">Disconnect</button>
-          <button id="saveConnectionBtn" class="button button-primary" type="submit">Connect</button>
-        </div>
+        <div class="dialog-actions"><button id="disconnectBtn" class="button button-quiet" type="button">Disconnect</button><button id="saveConnectionBtn" class="button button-primary" type="submit">Connect</button></div>
       </form>
       <details class="setup-help">
-        <summary>What needs to be configured?</summary>
-        <p>In Cloudflare, bind Workers KV as <code>STATUS_STORE</code>, and configure different <code>VIEW_TOKEN</code> and <code>INGEST_TOKEN</code> secrets. In ClipBridge Windows, enable monitoring with the ingest token. This webpage uses only the viewer token.</p>
-        <a href="https://github.com/Archil3s/clipbridge-windows/tree/main/cloudflare-dashboard" target="_blank" rel="noopener noreferrer">View setup instructions</a>
+        <summary>What needs configuring?</summary>
+        <p>Bind Workers KV as <code>STATUS_STORE</code> and create separate <code>VIEW_TOKEN</code> and <code>INGEST_TOKEN</code> secrets. The PC uses ingest; this dashboard uses viewer.</p>
+        <a href="https://github.com/Archil3s/clipbridge-windows/tree/main/cloudflare-dashboard" target="_blank" rel="noopener noreferrer">Setup documentation</a>
       </details>
     </div>
   </dialog>

@@ -5,6 +5,12 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 ## [Unreleased]
 
 ### Changed
+- Replaced the plain monitor layout with a screenshot-inspired ClipBridge processing console: charcoal workspace, vivid green status accents, compact navigation rail, live metrics, latest video row and configuration inspector.
+- Added progress and completed-clip trend graphs from authenticated status updates observed during the current browser session (no fabricated CPU/GPU measurements or queue history).
+- Clearly labelled sample-only charts and unavailable video preview; maintained existing Worker API and viewer-token security model.
+- Reworked phone navigation into a compact, touch-friendly bottom bar and extended Playwright responsive/metric verification.
+
+### Changed
 - Rebuilt the ClipBridge Cloudflare monitor into a premium dark-and-mint, task-first responsive dashboard with compact phone header and anchored navigation.
 - Added a large processing ring bound to real Cloudflare job progress, with a blank waiting state and unmistakably labelled sample preview.
 - Consolidated desktop, API health, viewer access, and activity into clearer panels, preserving the existing authenticated Cloudflare status API and 5-second polling.
