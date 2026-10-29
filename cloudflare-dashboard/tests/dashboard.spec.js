@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "@playwright/test";
 
 test("disconnected state is honest and sample is labelled", async ({ page }) => {
@@ -85,4 +86,27 @@ test("layout has no sideways scroll and controls remain usable", async ({ page }
   await expect(page.locator("#viewerToken")).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.locator("#connectDialog")).toBeHidden();
+});
+
+test("automated accessibility audit covers idle, sample, and connection settings", async ({ page }) => {
+  await page.goto("/");
+  const states = [
+    async () => {},
+    async () => page.getByRole("button", { name: "View sample" }).click(),
+    async () => {
+      await page.getByRole("button", { name: "Exit sample" }).click();
+      await page.getByRole("button", { name: "Connect dashboard" }).first().click();
+    }
+  ];
+  for (const [index, enterState] of states.entries()) {
+    await enterState();
+    const results = await new AxeBuilder({ page }).withTags([
+      "wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"
+    ]).analyze();
+    const violations = results.violations.filter(item =>
+      item.impact === "critical" || item.impact === "serious");
+    expect(violations, `Critical/serious WCAG violations in state ${index}: ${JSON.stringify(violations.map(x => ({
+      id: x.id, impact: x.impact, nodes: x.nodes.map(n => n.target)
+    })))}`).toEqual([]);
+  }
 });
