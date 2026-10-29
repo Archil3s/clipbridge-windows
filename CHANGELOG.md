@@ -4,6 +4,11 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Changed
+- Integrated pinned Anti Slop v3.2.24 agent guidance, including UI, accessibility, responsive layout, copywriting and code-comment skills.
+- Added root `AGENTS.md`, project `DESIGN.md`, upstream licence/attribution, and pull-request quality checklist for future contributions.
+- No changes to Windows runtime, Cloudflare deployment or existing UI were made by this integration.
+
 ### Planned
 - Confirm FFmpeg first-run installation and 15 GB processing on a real Windows PC.
 - Add true partial-job checkpoints, pause/resume and robust upload confirmation.
