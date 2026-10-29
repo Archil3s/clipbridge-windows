@@ -28,4 +28,6 @@ Open a GitHub issue with: problem, expected workflow, acceptance tests, edge cas
 
 ## Brave attachment reliability
 
+Windows 0.6.0 adds the requested Playwright workflow: a saved queue, direct disk attachment, a dedicated Brave profile, loopback CDP connection and automatic batch sends after readiness checks. The extension remains an optional alternative. See `docs/PLAYWRIGHT-UPLOADS.md` for setup, recovery and remaining live-site verification.
+
 Implemented MV3 worker transport, explicit tab/document arming, durable atomic batch reservations, concurrent local transfers and multi-file dispatch. Optional auto-send is explicitly enabled and checks visible UI readiness/new turns; limits or unknown states pause. Remaining: real Brave/Google sign-in and account-specific ChatGPT acceptance/readiness verification. No official upload-completion API is used; manual fallback remains available.

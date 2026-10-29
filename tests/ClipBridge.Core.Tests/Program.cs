@@ -12,6 +12,11 @@ string root = Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), "work")
 Directory.CreateDirectory(root);
 try
 {
+    if (args.Contains("--automation"))
+    {
+        await AutomaticUploadTests.RunAsync(root);
+        return;
+    }
     if (args.Contains("--serve"))
     {
         var fixtures = new List<string>();
@@ -62,7 +67,8 @@ try
         string source = Path.Combine(root, "synthetic.mp4");
         var start = new System.Diagnostics.ProcessStartInfo(ffmpeg)
         {
-            UseShellExecute = false, CreateNoWindow = true
+            UseShellExecute = false,
+            CreateNoWindow = true
         };
         foreach (string argument in new[] { "-hide_banner", "-loglevel", "error", "-f", "lavfi",
             "-i", "testsrc2=size=160x120:rate=24", "-f", "lavfi", "-i", "sine=frequency=440",
@@ -189,7 +195,7 @@ try
         return await http.SendAsync(request);
     }
     using (var invalid = await ReserveBatch(batchItems.Select((item, index) => new
-        { id = item.GetProperty("id").GetString(), claim = index == 0 ? "stale" : item.GetProperty("claim").GetString() })))
+    { id = item.GetProperty("id").GetString(), claim = index == 0 ? "stale" : item.GetProperty("claim").GetString() })))
         Check(invalid.StatusCode == HttpStatusCode.Conflict, "stale claim rejects entire batch atomically");
     var reservations = batchItems.Select(item => new { id = item.GetProperty("id").GetString(), claim = item.GetProperty("claim").GetString() }).ToArray();
     using (var reserved = await ReserveBatch(reservations))

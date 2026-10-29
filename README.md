@@ -1,6 +1,10 @@
 # ClipBridge — Windows Video Splitter
 
-ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.5.0 (preview)**.
+ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.6.0 (preview)**.
+
+## Automatic uploads with Playwright
+
+Open **Automatic uploads (Playwright)**, choose your prepared clip folder, open the automation browser and sign in yourself, then click **Start automatic uploads + Send**. ClipBridge saves the queue, attaches files directly from disk, waits for readiness, sends each batch, and continues after ChatGPT finishes responding. The extension is not required. The browser uses a separate saved Brave profile with its sandbox enabled; normal browser sign-in remains a user action. See the [setup and recovery guide](docs/PLAYWRIGHT-UPLOADS.md).
 
 ## Features
 
@@ -104,7 +108,7 @@ Cloudflare monitoring is **disabled by default**. Do not paste a Cloudflare acco
 
 ## Limitations and privacy
 
-- Automated browser attachment has been removed because Playwright-launched Brave can trigger the browser's insecure-flag warning and Google may reject automated sign-in. ClipBridge now opens normal Brave and provides a **manual** clip selection workflow.
+- Windows 0.6.0 adds an explicitly started Playwright upload workflow using a separate saved Brave profile and a loopback CDP connection. It does not disable the sandbox or automate Google sign-in. The normal-Brave extension and manual selection options remain available.
 - ClipBridge does not upload attachments or send ChatGPT messages. The user must select files, wait for ChatGPT to accept them, and send the message.
 - File upload quotas, platform availability, and accepted video formats are controlled by ChatGPT. ClipBridge cannot bypass them.
 - The previous `%LOCALAPPDATA%\ClipBridge\ChatGptBraveProfile` browser profile is no longer used or accessed by the app. Do not upload any browser profile or authentication data to GitHub.

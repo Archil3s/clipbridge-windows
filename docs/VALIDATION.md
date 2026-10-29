@@ -2,8 +2,9 @@
 
 ## Automated evidence
 
+- Windows 0.6.0 Playwright suite (`--automation`): saved queue deduplication, single-instance locking, durable reservations/reviewed retries, changed-file rejection, corrupt journal preservation, destination restrictions and independent batch byte caps. Synthetic browser scenarios exercise automatic batches of 3+1, exact file-byte checks, dynamic file pickers, a real loopback CDP connection with sandbox enabled, confirmed new-chat navigation, progress, disabled Send, missing filenames, errors, drafts/edits, Stop, navigation and uncertain sends. These do not establish live ChatGPT or Google acceptance.
 - Windows .NET 10 application: Release compilation with warnings treated as errors.
-- Dependency-free .NET regression runner: authorization, webpage-origin rejection, origin-less Chromium extension requests, authenticated ranged transfers, claim rotation, stale acknowledgement rejection, idempotent reservations, explicit retries, legacy three-attempt ceiling, configurable atomic batches, and durable reservation history across bridge restart.
+- .NET executable regression runner: authorization, webpage-origin rejection, origin-less Chromium extension requests, authenticated ranged transfers, claim rotation, stale acknowledgement rejection, idempotent reservations, explicit retries, legacy three-attempt ceiling, configurable atomic batches, and durable reservation history across bridge restart.
 - Optional Cloudflare configuration: disabled/invalid URL, missing/short/malformed token and valid configuration paths. Invalid monitoring returns a disabled reporter and a local-continuation status.
 - B-roll metadata: custom destination reload, multi-tag persistence, tag edits, any-selected-tag filtering and no-filter behavior.
 - Real FFmpeg synthetic-video tests: stream-copy splitting, compression with invalid monitoring disabled, B-roll export into a category directory, expected In/Out duration and unchanged source bytes. Run with `dotnet run --project tests/ClipBridge.Core.Tests -c Release -- --video` on Windows with FFmpeg/FFprobe in ClipBridge's installed tools directory.
@@ -17,6 +18,8 @@
 ```powershell
 dotnet build src/ClipBridge/ClipBridge.csproj -c Release -warnaserror
 dotnet run --project tests/ClipBridge.Core.Tests -c Release
+pwsh tests/ClipBridge.Core.Tests/bin/Release/net10.0-windows/playwright.ps1 install chromium
+dotnet run --project tests/ClipBridge.Core.Tests -c Release -- --automation
 node --test tests/brave-extension/extension.test.cjs
 npm --prefix cloudflare-dashboard install --no-audit --no-fund --no-package-lock
 # Install the test Chromium through the existing dashboard Playwright dependency:
@@ -27,7 +30,7 @@ node tests/brave-extension/composer-browser.cjs
 node tests/brave-extension/browser-transport.cjs
 ```
 
-The regression runner is an executable assertion harness without additional NuGet dependencies; it is invoked with `dotnet run`, not reported as a discovered xUnit/MSTest suite. Exceptions/nonzero exits fail CI. Temporary fixtures are under ignored `work/`.
+The regression runner is an executable assertion harness without a test-framework package; Microsoft.Playwright supplies the browser automation. It is invoked with `dotnet run`, not reported as a discovered xUnit/MSTest suite. Exceptions/nonzero exits fail CI. Temporary fixtures are under ignored `work/`.
 
 ## Manual checks still required
 
@@ -37,7 +40,7 @@ The regression runner is an executable assertion harness without additional NuGe
 - Real ChatGPT video acceptance, upload completion, account-specific size/rate limits and changes to the live website. The synthetic browser test does not establish any of these.
 - Long recordings (including 15 GB), disk-full recovery, interrupted encodes and live Cloudflare status delivery. The synthetic files do not establish those behaviors.
 
-The default workflow offers a multi-clip batch for manual review and Send. Explicitly enabled auto-send uses visible readiness checks, records a single send attempt, requires a new user turn, and waits for an assistant response before the next batch. Limits, unknown states, edits or navigation pause rather than guessing. A reserved/attempted status never means upload accepted. For uncertain or rejected attempts use manual attachment; unattempted transfers can be explicitly retried.
+The legacy extension defaults to manual review and Send; its auto-send remains opt-in. The Playwright workflow starts through an explicit **Start automatic uploads + Send** action. Both use visible readiness checks, record a single send attempt, require a new user turn, and wait for an assistant response before the next batch. Limits, unknown states, edits or navigation pause rather than guessing. A reserved/attempted status never means upload accepted. Review uncertain or rejected attempts before retrying.
 
 ## Quality review
 
