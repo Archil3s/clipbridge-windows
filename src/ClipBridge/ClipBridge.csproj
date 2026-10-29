@@ -9,4 +9,7 @@
     <RootNamespace>ClipBridge</RootNamespace>
     <Version>0.4.0</Version>
   </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 </Project>
