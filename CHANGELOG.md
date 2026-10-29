@@ -4,6 +4,13 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Added
+- Optional opt-in **Brave Auto Attach** browser extension and per-user authenticated localhost video transfer bridge (port 38419). Uses normal signed-in Brave, never Playwright, `--no-sandbox`, or Google login automation.
+- Windows controls to enable/disable the bridge, copy the private pairing key, and authorise the next group of up to 3 clips.
+- Extension popup for pairing, enabling/disabling and arming a specific ChatGPT tab. It attempts to supply prepared clips through the ChatGPT file input; it does not confirm successful uploads or send messages.
+- GitHub Actions now packages the unpacked Brave extension with the Windows installer and checks extension JavaScript syntax.
+- The manual clip-batch option remains available when attachment via the extension is unsupported or fails.
+
 ### Fixed
 - Fixed Brave's `--no-sandbox` warning and Google sign-in rejection triggered by ClipBridge launching a Playwright-controlled Brave session.
 - **Open ChatGPT in Brave** now launches the normal browser through Windows without Playwright, sandbox-disabling flags or a separate automation profile.
