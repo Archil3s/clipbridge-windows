@@ -1,118 +1,91 @@
 "use strict";
-
-// Runs only on chatgpt.com. Operates inside the user's normally signed-in
-// Brave browser; no CDP, Playwright, --no-sandbox or account login automation.
 (() => {
-  const API = "http://127.0.0.1:38419";
   let armed = false;
-  let armedConversation = "";
+  let conversation = "";
   let busy = false;
-  let lastStatus = "";
-  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message?.type === "clipbridge-arm") {
-      armed = true;
-      armedConversation = location.pathname + location.search;
-      report("Armed in this ChatGPT tab. Waiting for local ClipBridge clips.");
-      sendResponse({ ok: true });
+  let documentId;
+  const send = async message => {
+    const result = await chrome.runtime.sendMessage(message);
+    if (result?.error) throw new Error(result.error);
+    return result;
+  };
+  const hello = send({ type: "hello" }).then(result => { documentId = result.documentId; });
+  chrome.runtime.onMessage.addListener((message, sender, respond) => {
+    if (sender.id !== chrome.runtime.id) return;
+    if (message?.type === "clipbridge-disarm") { armed = false; respond({ ok: true }); return; }
+    if (message?.type === "clipbridge-start") {
+      armed = true; conversation = location.href; respond({ ok: true }); return;
     }
+    if (message?.type !== "clipbridge-arm") return;
+    hello.then(() => {
+      armed = false;
+      respond({ documentId });
+    });
+    return true;
   });
-
-  async function report(text) {
-    if (text === lastStatus) return;
-    lastStatus = text;
-    try { await chrome.storage.local.set({ lastStatus: text }); }
-    catch { /* Browser can be closing or the extension reloaded. */ }
-  }
-
-  function inputForVideo() {
-    // ChatGPT changes its UI; never assume that an input is guaranteed.
-    const inputs = [...document.querySelectorAll('input[type="file"]')];
-    return inputs.find(input => !input.disabled && (input.accept === "" ||
-      /video|mp4|mov|\*/i.test(input.accept))) ||
-      inputs.find(input => !input.disabled) || null;
-  }
-
-  async function request(path, key, options = {}) {
-    return fetch(API + path, {
-      method: options.method || "GET",
-      mode: "cors",
-      cache: "no-store",
-      headers: { "X-ClipBridge-Key": key },
-      signal: AbortSignal.timeout(options.timeout || 15000)
+  function inputForVideo(name) {
+    const extension = name ? "." + name.split(".").pop().toLowerCase() : null;
+    return [...document.querySelectorAll('input[type="file"]')].find(input => {
+      if (input.disabled) return false;
+      const accept = input.accept.toLowerCase().split(",").map(x => x.trim());
+      return !input.accept || accept.includes("*/*") || accept.includes("video/*") ||
+        (!name && accept.some(type => /^(video\/(mp4|quicktime|webm)|\.(mp4|mov|webm|m4v))$/.test(type))) ||
+        (extension && (accept.includes(extension) || accept.includes(
+          extension === ".mov" ? "video/quicktime" : extension === ".webm" ? "video/webm" : "video/mp4")));
     });
   }
-
+  function checkContext() {
+    if (!armed || location.href !== conversation || document.visibilityState !== "visible")
+      throw new Error("Conversation or visibility changed. Review and arm again.");
+  }
+  async function report(text) {
+    try { await send({ type: "status", text }); } catch { /* Disarmed or browser closed. */ }
+  }
   async function poll() {
-    if (busy || !armed || document.visibilityState !== "visible") return;
-    if (armedConversation !== location.pathname + location.search) {
-      armed = false;
-      await report("ChatGPT conversation changed. Auto attach stopped; arm the intended tab again.");
-      return;
-    }
+    if (!armed || busy || document.visibilityState !== "visible") return;
     busy = true;
-    let item = null;
-    let key = null;
     try {
-      const settings = await chrome.storage.local.get(["pairingKey", "enabled"]);
-      key = settings.pairingKey;
-      if (!settings.enabled || !key) return;
-
-      // Do not claim a file until the ChatGPT attachment input exists.
-      const input = inputForVideo();
-      if (!input) {
-        await report("ChatGPT file input unavailable. Open the attachment menu or refresh this tab.");
+      checkContext();
+      if (!inputForVideo()) {
+        await report("No compatible file input. Open ChatGPT's attachment menu; manual attachment is available.");
         return;
       }
-
-      const result = await request("/api/next", key);
-      if (result.status === 401) {
-        await report("Pairing key rejected. Copy the current key from ClipBridge Windows.");
-        return;
-      }
-      if (!result.ok) throw new Error("Local ClipBridge service unavailable.");
-      item = await result.json();
+      const item = await send({ type: "next" });
       if (!item.ready) {
-        if (item.reason === "batch-complete")
-          await report("Up to 3 clips offered. Verify uploads and send in ChatGPT; click Next batch on the PC.");
-        else
-          await report("Connected. No prepared clips waiting for upload.");
+        await report(item.reason === "batch-complete" ?
+          "Batch of up to 3 attempts complete. Review ChatGPT, then allow the next batch on the PC." :
+          "Bridge reachable. No clip ready; check the Windows queue.");
         return;
       }
-      if (!item.id || !item.name || !Number.isFinite(item.size)) throw new Error("Invalid clip data.");
-      if (item.size > 525_000_000) throw new Error("Clip exceeds extension's 525 MB safety limit.");
-
-      await report("Preparing " + item.name + " for ChatGPT...");
-      const download = await request("/api/file/" + encodeURIComponent(item.id), key, { timeout: 240000 });
-      if (!download.ok) throw new Error("Clip could not be retrieved from the local PC.");
-      const blob = await download.blob();
-      if (blob.size !== item.size) throw new Error("Incomplete local clip transfer.");
-      const type = /\.mov$/i.test(item.name) ? "video/quicktime" :
-        /\.webm$/i.test(item.name) ? "video/webm" : "video/mp4";
-      const file = new File([blob], item.name, { type });
+      if (item.size > 525_000_000 || !/\.(mp4|mov|webm|m4v)$/i.test(item.name))
+        throw new Error("Unsupported clip or over 525 MB. Use manual attachment or compress to MP4.");
+      await report("Transferring " + item.name + " locally. No ChatGPT upload confirmed.");
+      const parts = [];
+      let done = false;
+      while (!done) {
+        checkContext();
+        const chunk = await send({ type: "chunk", id: item.id });
+        parts.push(Uint8Array.from(atob(chunk.data), char => char.charCodeAt(0)));
+        done = chunk.done;
+      }
+      checkContext();
+      const input = inputForVideo(item.name);
+      if (!input || input.files?.length) throw new Error("Input unavailable or contains files. Review ChatGPT first.");
+      const file = new File(parts, item.name, { type: /\.mov$/i.test(item.name) ?
+        "video/quicktime" : /\.webm$/i.test(item.name) ? "video/webm" : "video/mp4" });
+      if (file.size !== item.size) throw new Error("Incomplete local file transfer.");
       const data = new DataTransfer();
       data.items.add(file);
+      await report("Attempt reserved for " + item.name + ". Verify in ChatGPT; re-arm to continue. Upload acceptance is unknown.");
+      await send({ type: "dispatch", id: item.id });
+      checkContext();
+      armed = false;
       input.files = data.files;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
       input.dispatchEvent(new Event("change", { bubbles: true }));
-      // This only verifies dispatch to a file input, not the service's upload.
-      await sleep(1100);
-      const ack = await request("/api/offered/" + encodeURIComponent(item.id),
-        key, { method: "POST" });
-      if (!ack.ok) throw new Error("Could not record the attachment attempt.");
-      await report("Offered " + item.name + " to ChatGPT. Confirm it uploaded before sending.");
     } catch (error) {
-      await report("Auto attach problem: " + (error?.message || String(error)) +
-        " — use manual attachment if needed.");
-      if (item?.id && key) {
-        try {
-          await request("/api/retry/" + encodeURIComponent(item.id),
-            key, { method: "POST" });
-        } catch { /* Keep error visible; claim also expires on the PC. */ }
-      }
+      await report("Attachment stopped: " + error.message + " Use manual attachment or retry unoffered clips on the PC.");
+      armed = false;
     } finally { busy = false; }
   }
-
   setInterval(poll, 3500);
 })();

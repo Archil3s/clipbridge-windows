@@ -30,12 +30,33 @@ public sealed class CloudflareStatusReporter : IAsyncDisposable
             !string.IsNullOrEmpty(uri.UserInfo) ||
             uri.IsLoopback || uri.HostNameType != UriHostNameType.Dns)
             throw new ArgumentException("Provide the HTTPS address of your Cloudflare Worker.", nameof(workerUrl));
-        if (string.IsNullOrWhiteSpace(token) || token.Length < 32)
-            throw new ArgumentException("Cloudflare ingest token must contain at least 32 characters.", nameof(token));
+        if (string.IsNullOrWhiteSpace(token) || token.Length < 32 ||
+            token.Any(ch => ch <= ' ' || ch > '~'))
+            throw new ArgumentException("Cloudflare ingest token must contain at least 32 printable characters without whitespace.", nameof(token));
 
         _endpoint = new Uri(uri.GetLeftPart(UriPartial.Authority).TrimEnd('/') + "/api/status");
         _token = token;
         _onConnection = onConnection;
+    }
+
+    public static CloudflareStatusReporter? CreateOptional(
+        bool enabled, string workerUrl, string token, Action<string> onConnection)
+    {
+        if (!enabled)
+        {
+            onConnection("Cloudflare: disabled; local processing only");
+            return null;
+        }
+        try
+        {
+            return new CloudflareStatusReporter(workerUrl, token, onConnection);
+        }
+        catch (ArgumentException ex)
+        {
+            onConnection("Monitoring disabled: " + ex.Message +
+                " Local processing continues. Correct settings before the next job.");
+            return null;
+        }
     }
 
     public void Publish(CloudflareStatus status) =>

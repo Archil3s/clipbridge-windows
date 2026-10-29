@@ -3,13 +3,27 @@
   "name": "ClipBridge Auto Attach",
   "short_name": "ClipBridge",
   "description": "Opt-in local clip attachment to an open ChatGPT tab in normal Brave. Never sends messages.",
-  "version": "0.1.0",
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["http://127.0.0.1:38419/*"],
+  "version": "0.2.0",
+  "minimum_chrome_version": "116",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:38419/*",
+    "https://chatgpt.com/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://chatgpt.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],

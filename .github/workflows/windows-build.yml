@@ -22,12 +22,27 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Check version consistency
         run: python scripts/check_version.py
       - name: Restore
         run: dotnet restore src/ClipBridge/ClipBridge.csproj
+      - name: Test local bridge, optional monitoring and B-roll library
+        run: dotnet run --project tests/ClipBridge.Core.Tests -c Release
+      - name: Test extension authorization and transfer protocol
+        run: node --test tests/brave-extension/extension.test.cjs
+      - name: Install existing browser-test dependencies
+        working-directory: cloudflare-dashboard
+        run: npm install --no-audit --no-fund --no-package-lock
+      - name: Install isolated Chromium test browser
+        working-directory: cloudflare-dashboard
+        run: npx playwright install chromium
+      - name: Test real MV3 transport against local bridge and synthetic page
+        run: node tests/brave-extension/browser-transport.cjs
       - name: Publish Windows desktop app
-        run: dotnet publish src/ClipBridge/ClipBridge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o publish
+        run: dotnet publish src/ClipBridge/ClipBridge.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o publish -warnaserror
       - name: Upload portable Windows build
         uses: actions/upload-artifact@v4
         with:
@@ -51,6 +66,8 @@ jobs:
       - name: Verify Brave extension JavaScript
         shell: pwsh
         run: |
+          node --check brave-extension/background.js
+          if ($LASTEXITCODE -ne 0) { throw "Brave extension worker syntax error" }
           node --check brave-extension/content.js
           if ($LASTEXITCODE -ne 0) { throw "Brave extension content.js syntax error" }
           node --check brave-extension/popup.js
@@ -61,6 +78,7 @@ jobs:
           name: ClipBridge-Brave-Extension
           path: |
             brave-extension/manifest.json
+            brave-extension/background.js
             brave-extension/content.js
             brave-extension/popup.js
             brave-extension/popup.html

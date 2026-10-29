@@ -25,3 +25,6 @@ publish/
 **/node_modules/
 **/.dev.vars*
 **/.env*
+
+/work/
+/installer-output/

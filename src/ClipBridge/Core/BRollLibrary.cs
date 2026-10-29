@@ -67,8 +67,11 @@ public static class BRollLibrary
         BRollClipMetadata? old = null;
         if (File.Exists(sidecar))
         {
-            try { old = JsonSerializer.Deserialize<BRollClipMetadata>(
-                await File.ReadAllTextAsync(sidecar, cancellationToken)); }
+            try
+            {
+                old = JsonSerializer.Deserialize<BRollClipMetadata>(
+                await File.ReadAllTextAsync(sidecar, cancellationToken));
+            }
             catch (JsonException)
             {
                 throw new InvalidDataException("Tag metadata is damaged. Back it up before editing.");
@@ -123,7 +126,7 @@ public static class BRollLibrary
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
             if (filters.Count > 0 && !tags.Any(filters.Contains)) continue;
-            string folder = Path.GetFileName(Path.GetDirectoryName(path));
+            string folder = Path.GetFileName(Path.GetDirectoryName(path)) ?? "Unsorted";
             results.Add(new BRollLibraryItem(
                 path,
                 metadata?.Title is { Length: > 0 } title

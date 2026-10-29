@@ -32,6 +32,18 @@ public partial class MainWindow : Window
         InitializeComponent();
         VideoList.ItemsSource = _videos;
         Loaded += Window_Loaded;
+        var bridgeTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2)
+        };
+        bridgeTimer.Tick += (_, _) =>
+        {
+            if (_braveUploadBridge is not null)
+                BraveBridgeQueueLabel.Text = _braveUploadBridge.Status;
+            else BraveBridgeQueueLabel.Text = "";
+        };
+        Loaded += (_, _) => bridgeTimer.Start();
+        Closed += (_, _) => bridgeTimer.Stop();
         OutputFolderBox.Text = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "ClipBridge");
         var unfinished = _journal.RecoverableInputs();
@@ -166,16 +178,17 @@ public partial class MainWindow : Window
                 await _cloudflareReporter.DisposeAsync();
                 _cloudflareReporter = null;
             }
-            if (CloudflareEnabledBox.IsChecked == true)
+            _cloudflareReporter = CloudflareStatusReporter.CreateOptional(
+                CloudflareEnabledBox.IsChecked == true,
+                CloudflareUrlBox.Text, CloudflareTokenBox.Password,
+                status => Dispatcher.BeginInvoke(new Action(() =>
+                    CloudflareStatusLabel.Text = status)));
+            if (_cloudflareReporter is not null)
             {
-                _cloudflareReporter = new CloudflareStatusReporter(
-                    CloudflareUrlBox.Text, CloudflareTokenBox.Password,
-                    status => Dispatcher.BeginInvoke(new Action(() =>
-                        CloudflareStatusLabel.Text = status)));
                 _cloudflareReporter.Start();
                 CloudflareStatusLabel.Text = "Cloudflare: connecting (status only, no videos)";
             }
-            else CloudflareStatusLabel.Text = "Cloudflare: disabled; no video data sent";
+            else CloudflareEnabledBox.IsChecked = false;
 
             foreach (string file in files)
             {
@@ -433,6 +446,13 @@ public partial class MainWindow : Window
         BraveBridgeStatusLabel.Text =
             "Pairing key copied. Paste it into the ClipBridge extension popup, " +
             "then arm your chosen ChatGPT tab. Keep the key private.";
+    }
+
+    private void RetryBridgeButton_Click(object sender, RoutedEventArgs e)
+    {
+        _braveUploadBridge?.RetryUnoffered();
+        BraveBridgeStatusLabel.Text = "Unattempted transfers released. Re-arm the intended Brave tab. " +
+            "Already reserved attempts require review and manual retry to avoid duplicates.";
     }
 
     private void NextBridgeBatchButton_Click(object sender, RoutedEventArgs e)
