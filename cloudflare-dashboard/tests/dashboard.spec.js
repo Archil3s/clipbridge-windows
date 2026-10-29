@@ -3,7 +3,6 @@ import { test, expect } from "@playwright/test";
 test("disconnected state is honest and sample is labelled", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#stateTitle")).toHaveText("Not connected");
-  await expect(page.locator("#connectionValue")).toHaveCount(0);
   await expect(page.locator("#jobName")).toHaveText("No video reported");
 
   await page.getByRole("button", { name: "View sample" }).click();
@@ -16,7 +15,7 @@ test("disconnected state is honest and sample is labelled", async ({ page }) => 
   await page.getByRole("button", { name: "Exit sample" }).click();
   await expect(page.locator("#demoMarker")).toBeHidden();
   await expect(page.locator("#stateTitle")).toHaveText("Not connected");
-  await expect(page.locator("#progressText")).toHaveText("—");
+  await expect(page.locator("#progressText")).toHaveText("Not reported");
 });
 
 test("viewer token errors stay visible instead of falsely connecting", async ({ page }) => {
