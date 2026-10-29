@@ -48,6 +48,23 @@ jobs:
         with:
           name: ClipBridge-Installer
           path: installer-output/ClipBridge-Setup.exe
+      - name: Verify Brave extension JavaScript
+        shell: pwsh
+        run: |
+          node --check brave-extension/content.js
+          if ($LASTEXITCODE -ne 0) { throw "Brave extension content.js syntax error" }
+          node --check brave-extension/popup.js
+          if ($LASTEXITCODE -ne 0) { throw "Brave extension popup.js syntax error" }
+      - name: Upload Brave auto-attach extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipBridge-Brave-Extension
+          path: |
+            brave-extension/manifest.json
+            brave-extension/content.js
+            brave-extension/popup.js
+            brave-extension/popup.html
+            brave-extension/README.md
       - name: Package release portable ZIP
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
