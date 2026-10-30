@@ -4,6 +4,13 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.2 manual sign-in handoff
+- Open the dedicated Brave profile for manual sign-in without debugging flags or Playwright. After the user closes that window, Start reopens the saved profile for uploads. Preserve browser preferences with CDP `NoDefaults`; reuse an already-open automation conversation without navigation or reload.
+- On resume, stop on a missing or ambiguous conversation instead of creating another tab. Leave the browser open and disconnect after every completed, stopped or failed run.
+- Detect visible verification pages and pause for the user. Preserve unattempted clips and existing uncertain reservations; never interact with verification controls.
+- Add manual-launch argument coverage, synthetic verification regressions and real CDP tests for the production session, retained page state, browser preferences and missing/ambiguous-target recovery. This does not establish that Cloudflare will accept a particular browser session.
+- Bound test-profile cleanup retries while Chromium child processes release their files on Windows. Assertions and persistent cleanup failures still fail the test run.
+
 ### Windows 0.6.1 / extension 0.3.2 composer compatibility
 - Recognize the live ChatGPT attachment and Send button labels when IDs and test IDs are absent. Keep ambiguous editors and conversation containers excluded.
 - Handle the attachment popover's ordinary upload button as well as menu items, including its subtitle. Preserve the file-chooser path when multiple hidden inputs are ambiguous.
@@ -29,6 +36,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.2] - 2026-10-30 (preview)
+
+Separates manual sign-in from the Playwright connection, preserves the open chat and browser preferences, and pauses on verification pages. Live Cloudflare and ChatGPT acceptance remain unverified.
 
 ## [0.6.1] - 2026-10-30 (preview)
 

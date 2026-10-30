@@ -13,6 +13,19 @@ internal static class AutomaticUploadTests
 
     internal static async Task RunAsync(string root)
     {
+        ProcessStartInfo? manualLaunch = null;
+        string manualProfile = Path.Combine(root, "manual-profile");
+        using (var manual = new BraveAutomationSession(manualProfile, "fixture-browser", start =>
+        {
+            manualLaunch = start;
+            return Process.GetCurrentProcess();
+        }))
+        {
+            await manual.OpenForSignInAsync("https://chatgpt.com/", CancellationToken.None);
+            Check(manualLaunch is not null && manualLaunch.ArgumentList.SequenceEqual(new[] {
+                "--user-data-dir=" + manualProfile, "--new-window", "https://chatgpt.com" }) && manual.Page is null,
+                "manual sign-in launches only the saved profile and URL, without debugging or Playwright");
+        }
         var files = new List<string>();
         for (int i = 0; i < 4; i++)
         {
@@ -71,7 +84,8 @@ internal static class AutomaticUploadTests
             ChromiumSandbox = true,
             ExecutablePath = Environment.GetEnvironmentVariable("CHROMIUM_EXE")
         });
-        foreach (string mode in new[] { "auto", "menu", "semantic", "new-chat", "pending", "disabled", "partial", "error", "draft", "edit", "cancel", "navigation", "uncertain-send" })
+        foreach (string mode in new[] { "auto", "menu", "semantic", "new-chat", "pending", "disabled", "partial", "error", "draft", "edit", "cancel", "navigation", "uncertain-send",
+            "challenge-title", "challenge-form", "challenge-upload", "hidden-challenge" })
             await BrowserCaseAsync(browser, root, files, mode);
         await CdpCaseAsync(playwright, root, files);
         Console.WriteLine("Synthetic clips/pages only; normal Brave sign-in and live ChatGPT acceptance remain unverified.");
@@ -84,7 +98,7 @@ internal static class AutomaticUploadTests
         var start = new ProcessStartInfo(Environment.GetEnvironmentVariable("CHROMIUM_EXE") ?? playwright.Chromium.ExecutablePath)
         { UseShellExecute = false, CreateNoWindow = true };
         foreach (string argument in new[] { "--headless=new", "--user-data-dir=" + profile, "--remote-debugging-address=127.0.0.1",
-            "--remote-debugging-port=0", "--disable-background-networking", "--no-first-run", "about:blank" }) start.ArgumentList.Add(argument);
+            "--remote-debugging-port=0", "--disable-background-networking", "--no-first-run", "--force-dark-mode", "about:blank" }) start.ArgumentList.Add(argument);
         using var process = Process.Start(start) ?? throw new Exception("Could not start CDP fixture browser");
         using var cdpDriver = await Playwright.CreateAsync();
         try
@@ -92,10 +106,45 @@ internal static class AutomaticUploadTests
             string portFile = Path.Combine(profile, "DevToolsActivePort");
             for (int i = 0; i < 60 && !File.Exists(portFile); i++) await Task.Delay(250);
             string[] port = await File.ReadAllLinesAsync(portFile);
-            var connected = await cdpDriver.Chromium.ConnectOverCDPAsync("http://127.0.0.1:" + port[0]);
-            await BrowserCaseAsync(connected, root, files, "cdp");
-            Check(true, "direct uploads work through a real loopback CDP connection with the browser sandbox enabled");
+            var connected = await cdpDriver.Chromium.ConnectOverCDPAsync("http://127.0.0.1:" + port[0], new() { NoDefaults = true });
+            var fixturePage = connected.Contexts[0].Pages[0];
+            const string url = "https://chatgpt.com/c/synthetic-reels";
+            await fixturePage.RouteAsync("https://chatgpt.com/**", route => route.FulfillAsync(new() { ContentType = "text/html", Body = Fixture("cdp") }));
+            await fixturePage.GotoAsync(url);
+            await fixturePage.EvaluateAsync("window.clipBridgeFixture = 'existing page'");
             cdpDriver.Dispose();
+
+            using var session = new BraveAutomationSession(profile);
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            bool manualRejected = false;
+            try { await session.OpenForSignInAsync(url, deadline.Token); }
+            catch (IOException) { manualRejected = true; }
+            Check(manualRejected && session.Page is null,
+                "manual sign-in refuses to reuse an existing debugging window");
+            await session.OpenAsync(url, deadline.Token);
+            var page = session.Page!;
+            var duplicate = await page.Context.NewPageAsync();
+            await duplicate.RouteAsync("https://chatgpt.com/**", route => route.FulfillAsync(new() { ContentType = "text/html; charset=utf-8", Body = Fixture("cdp") }));
+            await duplicate.GotoAsync(url);
+            bool ambiguous = false;
+            try { await session.OpenAsync(url, deadline.Token); }
+            catch (IOException) { ambiguous = true; }
+            Check(ambiguous && page.Url == url && duplicate.Url == url, "duplicate target tabs stop without navigating either tab");
+            await duplicate.CloseAsync();
+            await session.OpenAsync(url, deadline.Token);
+            Check(await page.EvaluateAsync<string>("window.clipBridgeFixture") == "existing page" && page.Context.Pages.Count == 1,
+                "resume reuses the open page without a reload or duplicate tab");
+            Check(await page.EvaluateAsync<bool>("matchMedia('(prefers-color-scheme: dark)').matches"),
+                "production CDP connection preserves the browser's dark preference");
+            bool wrongTarget = false;
+            try { await session.OpenAsync("https://chatgpt.com/c/not-open", deadline.Token); }
+            catch (IOException) { wrongTarget = true; }
+            Check(wrongTarget && page.Url == url && page.Context.Pages.Count == 1,
+                "missing target stops without navigating the signed-in page or creating a tab");
+            await session.OpenAsync(url, deadline.Token);
+            await RunFixtureAsync(page, root, files, "cdp");
+            Check(true, "direct uploads work through a real loopback CDP connection with the browser sandbox enabled");
+            session.Dispose();
             using var http = new System.Net.Http.HttpClient(new System.Net.Http.HttpClientHandler { UseProxy = false });
             using var response = await http.GetAsync("http://127.0.0.1:" + port[0] + "/json/version");
             Check(!process.HasExited && response.IsSuccessStatusCode, "disconnecting Playwright leaves the user's browser open for manual sign-in");
@@ -110,9 +159,14 @@ internal static class AutomaticUploadTests
         await page.RouteAsync("https://chatgpt.com/**", route => route.FulfillAsync(new() { ContentType = "text/html", Body = Fixture(mode) }));
         string url = mode == "new-chat" ? "https://chatgpt.com/" : "https://chatgpt.com/c/synthetic-reels";
         await page.GotoAsync(url);
+        await RunFixtureAsync(page, root, files, mode);
+    }
+
+    private static async Task RunFixtureAsync(IPage page, string root, List<string> files, string mode)
+    {
         using var queue = new AutomaticUploadQueue(Path.Combine(root, mode + ".json"));
         queue.Add(files);
-        queue.Configure(url, 3, "Clips for gardening reels. Wait for instructions.");
+        queue.Configure(page.Url, 3, "Clips for gardening reels. Wait for instructions.");
         using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var runner = new PlaywrightChatUploader(page, queue, status =>
         {
@@ -122,7 +176,7 @@ internal static class AutomaticUploadTests
         Exception? stopped = null;
         try { await runner.RunAsync(cancel.Token); } catch (Exception ex) { stopped = ex; }
         int sends = await page.EvaluateAsync<int>("window.sends.length");
-        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp")
+        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp" or "hidden-challenge")
         {
             if (stopped is not null) throw new Exception(mode + " unexpectedly stopped", stopped);
             Check(sends == 2 && queue.Clips.All(clip => clip.State == "Submitted"), mode + ": automatically submits batches of 3+1");
@@ -146,11 +200,19 @@ internal static class AutomaticUploadTests
             if (mode == "draft") Check(queue.Clips.All(clip => clip.State == "Ready"), "existing draft prevents any file claim");
             if (mode == "edit") Check(await page.Locator("#prompt-textarea").InnerTextAsync() == "Keep my own message", "user draft edits remain intact");
             if (mode == "uncertain-send") Check(queue.Clips.Count(clip => clip.State == "Send attempted") == 3, "uncertain sends remain reserved for review");
+            if (mode.StartsWith("challenge-", StringComparison.Ordinal))
+            {
+                Check(stopped is InvalidOperationException && stopped.Message.Contains("verification"), mode + ": reports verification immediately instead of waiting for a composer");
+                Check(await page.EvaluateAsync<int>("window.challengeClicks") == 0, mode + ": never clicks verification controls");
+                Check(queue.Clips.Count(clip => clip.State == "Attachment attempted") == (mode == "challenge-upload" ? 3 : 0) &&
+                    queue.Clips.Count(clip => clip.State == "Ready") == (mode == "challenge-upload" ? 1 : 4),
+                    mode + ": preserves unattempted clips and reserves only attempts already made");
+            }
         }
     }
 
     private static string Fixture(string mode) => """
-        <!doctype html><html><body><main><div id="composer-background">
+        <!doctype html><html><head><meta charset="utf-8"></head><body><main><div id="composer-background">
         <div contenteditable="true" id="prompt-textarea" role="textbox" class="ProseMirror"><p><br></p></div>
         <button id="composer-plus-btn" type="button">Attach</button><div id="chips"></div>
         <button id="composer-submit-button" type="button" disabled>Send</button></div><div id="turns"></div></main>
@@ -163,7 +225,14 @@ internal static class AutomaticUploadTests
           send.removeAttribute('id');send.setAttribute('aria-label','Send');
           for(let i=0;i<2;i++){let unrelated=document.createElement('input');unrelated.type='file';unrelated.multiple=true;unrelated.hidden=true;document.body.append(unrelated);}
         }
-        window.sends=[];window.payloads=[];window.premature=false;
+        window.sends=[];window.payloads=[];window.premature=false;window.challengeClicks=0;
+        function challenge(hidden=false){
+          const form=document.createElement('form');form.id='challenge-form';form.hidden=hidden;
+          const button=document.createElement('button');button.textContent='Verify you are human';button.onclick=e=>{e.preventDefault();window.challengeClicks++;};
+          form.append(button);document.body.append(form);
+        }
+        if(mode==='challenge-title')document.title='Just a moment…';
+        if(mode==='challenge-form'||mode==='hidden-challenge')challenge(mode==='hidden-challenge');
         if(mode==='draft')editor.textContent='Keep my draft';
         function makeInput(){
           let input=document.createElement('input');input.type='file';input.multiple=true;input.accept='video/mp4';input.hidden=true;
@@ -171,6 +240,7 @@ internal static class AutomaticUploadTests
           input.onchange=async()=>{
             if(document.querySelector('button[aria-label="Stop"]'))window.premature=true;
             window.currentFiles=[...input.files];send.disabled=true;chips.replaceChildren();
+            if(mode==='challenge-upload')challenge();
             for(const file of (mode==='partial'?[...input.files].slice(0,2):input.files)){const chip=document.createElement('span');chip.textContent=file.name;chips.append(chip);}
             const progress=document.createElement('span');progress.setAttribute('role','progressbar');progress.textContent='Uploading';chips.append(progress);
             for(const file of input.files){const bytes=new Uint8Array(await file.arrayBuffer());window.payloads.push({name:file.name,size:file.size,sum:bytes.reduce((a,b)=>a+b,0)});}

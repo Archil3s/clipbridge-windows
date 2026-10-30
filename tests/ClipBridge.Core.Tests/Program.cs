@@ -213,6 +213,15 @@ try
 }
 finally
 {
-    Directory.Delete(root, recursive: true);
+    string fixtureRoot = Path.GetFullPath(root);
+    string fixtureParent = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "work")) + Path.DirectorySeparatorChar;
+    if (!fixtureRoot.StartsWith(fixtureParent, StringComparison.OrdinalIgnoreCase))
+        throw new IOException("Refusing to remove a fixture outside the test workspace.");
+    for (int attempt = 0; ; attempt++)
+    {
+        try { Directory.Delete(fixtureRoot, recursive: true); break; }
+        // Chromium child processes can release profile files just after the parent exits.
+        catch (IOException) when (attempt < 25) { await Task.Delay(200); }
+    }
 }
 

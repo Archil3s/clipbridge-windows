@@ -1,3 +1,12 @@
+const verificationVisible = element => {
+  const rect = element.getBoundingClientRect();
+  const style = getComputedStyle(element);
+  return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+};
+if (/^just a moment[.\u2026!\s]*$/i.test(document.title.trim()) ||
+    [...document.querySelectorAll('#challenge-form, iframe[src^="https://challenges.cloudflare.com/"]')].some(verificationVisible)) {
+  return { error: 'Browser verification needs your attention. Playwright is disconnecting. Complete verification yourself in Brave, then click Start again. If it keeps repeating, leave automation stopped; ClipBridge cannot approve the challenge.' };
+}
 const c = globalThis.ClipBridgeComposer;
 const ui = c.find();
 const tag = (element, kind) => {
