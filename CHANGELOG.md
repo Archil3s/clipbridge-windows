@@ -4,6 +4,11 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.1 / extension 0.3.2 composer compatibility
+- Recognize the live ChatGPT attachment and Send button labels when IDs and test IDs are absent. Keep ambiguous editors and conversation containers excluded.
+- Handle the attachment popover's ordinary upload button as well as menu items, including its subtitle. Preserve the file-chooser path when multiple hidden inputs are ambiguous.
+- Recognize labelled Stop controls and test that the next batch waits for response completion. Add a synthetic scenario based on the inspected live control structure; no live clips were submitted during inspection.
+
 ### Windows 0.6.0 Playwright uploads
 - Add a dedicated automatic upload window with a saved prepared-clip queue, folder import, conversation link, batch size, per-batch message and Stop control.
 - Attach prepared files directly from disk through Microsoft.Playwright 1.64.1. Automatically wait for visible upload readiness, send once, confirm the new user message and wait for the response before continuing.
@@ -24,6 +29,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.1] - 2026-10-30 (preview)
+
+Fixes detection of the current labelled ChatGPT composer and attachment popover in the Playwright uploader. Includes extension 0.3.2 with shared composer recognition improvements.
 
 ## [0.6.0] - 2026-10-30 (preview)
 

@@ -36,7 +36,7 @@ if (ui) {
     state.input = tag(inputs[0], 'file');
     state.multiple = inputs[0].multiple;
   }
-  const menus = [...ui.root.querySelectorAll('button#composer-plus-btn, button[data-testid="composer-plus-btn"], button[aria-label="Add photos & files"], button[aria-label="Attach files"]')]
+  const menus = [...ui.root.querySelectorAll('button#composer-plus-btn, button[data-testid="composer-plus-btn"], button[aria-label="Add photos & files"], button[aria-label="Attach files"], button[aria-label="Add files and more"]')]
     .filter(button => button.getClientRects().length && !button.disabled);
   if (menus.length === 1) state.menu = tag(menus[0], 'menu');
 }

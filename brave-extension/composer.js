@@ -5,12 +5,15 @@
   const editorSelector = '#prompt-textarea, [data-testid="prompt-textarea"], textarea[name="prompt-textarea"], ' +
     '[contenteditable="true"].ProseMirror, [contenteditable="true"][role="textbox"], [contenteditable="plaintext-only"][role="textbox"]';
   const sendSelector = 'button[data-testid="send-button"], button#composer-submit-button, ' +
-    'button[aria-label="Send prompt"], button[aria-label="Send message"]';
+    'button[aria-label="Send prompt"], button[aria-label="Send message"], button[aria-label="Send"]';
+  const stopSelector = 'button[data-testid="stop-button"], button[aria-label="Stop"], ' +
+    'button[aria-label="Stop generating"], button[aria-label="Stop streaming"]';
   const rootSelector = 'form, [data-testid="composer"], [data-type="unified-composer"], #composer-background';
   const boundarySelector = 'body, html, main, [role="main"], article, [data-message-author-role], ' +
     '[data-testid^="conversation-turn"], [role="dialog"]';
-  const controlSelector = sendSelector + ', button[data-testid="stop-button"], button#composer-plus-btn, ' +
-    'button[data-testid="composer-plus-btn"], button[data-testid="voice-mode-button"]';
+  const controlSelector = sendSelector + ', ' + stopSelector + ', button#composer-plus-btn, ' +
+    'button[data-testid="composer-plus-btn"], button[data-testid="voice-mode-button"], ' +
+    'button[aria-label="Add files and more"], button[aria-label="Add photos & files"], button[aria-label="Attach files"]';
   const text = editor => ("value" in editor ? editor.value : editor.innerText || editor.textContent || "").trim();
   function editors() {
     return [...document.querySelectorAll(editorSelector)].filter(editor => visible(editor) &&
@@ -75,7 +78,7 @@
     return composer && text(composer.editor) === expectedText && hasNames(composer.root, items) &&
       !pending(composer.root) && composer.button && !composer.button.disabled &&
       composer.button.getAttribute('aria-disabled') !== 'true' &&
-      ![...document.querySelectorAll('button[data-testid="stop-button"]')].some(visible);
+      !responding();
   }
   function write(editor, value) {
     if (text(editor)) throw new Error("The composer contains your text. Send manually or clear it before arming.");
@@ -89,6 +92,6 @@
     if (text(editor) !== value) throw new Error("Could not verify batch message text. Send manually.");
   }
   function turns(role) { return [...document.querySelectorAll('[data-message-author-role="' + role + '"]')]; }
-  function responding() { return [...document.querySelectorAll('button[data-testid="stop-button"]')].some(visible); }
+  function responding() { return [...document.querySelectorAll(stopSelector)].some(visible); }
   globalThis.ClipBridgeComposer = { find, problem, text, error, pending, hasNames, empty, ready, write, turns, responding };
 })();

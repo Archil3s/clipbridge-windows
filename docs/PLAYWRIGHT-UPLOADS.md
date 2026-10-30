@@ -1,10 +1,10 @@
-# Automatic uploads with Playwright (Windows 0.6.0)
+# Automatic uploads with Playwright (Windows 0.6.1)
 
 This workflow uploads prepared clips and sends each batch automatically after you start it. It does not require the Brave extension or its local file-transfer bridge. Playwright supplies the local file paths directly to the browser file input, avoiding the extension's base64 chunk transfers.
 
 ## Start
 
-1. Install Windows 0.6.0 and open **Automatic uploads (Playwright)**.
+1. Install Windows 0.6.1 and open **Automatic uploads (Playwright)**. Version 0.6.1 recognizes the current labelled message box and attachment popover, fixing the indefinite-looking wait in 0.6.0.
 2. Choose **Choose clip folder** and select the folder containing your finished MP4/MOV/M4V/WebM clips. The saved queue is separate from source videos waiting to be split. Clips already prepared by the current ClipBridge job are imported when this window opens.
 3. Leave the conversation link at `https://chatgpt.com/` for a new chat, or paste an existing `https://chatgpt.com/c/...` conversation link.
 4. Choose clips per message and the message to send with each batch. Start with 3. The maximum 10 is a local setting, not a detected account limit; the batch also has a 1 GB cap. Large clips can reduce the count.
