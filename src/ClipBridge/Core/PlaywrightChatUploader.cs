@@ -116,11 +116,10 @@ public sealed class PlaywrightChatUploader
                 if (chooserReady.Task.IsCompletedSuccessfully) return (ui, await chooserReady.Task);
                 ui = await SnapshotAsync(batch, "", 0, ct);
                 if (ui.Input is not null) return (ui, null);
-                var menu = _page.GetByRole(AriaRole.Menuitem, new()
-                {
-                    NameRegex = new Regex(
-                    @"^(Add photos (&|and) files|Upload (from computer|files)|Add files|Upload file)$", RegexOptions.IgnoreCase)
-                });
+                var uploadName = new Regex(
+                    @"^(Add photos (&|and) files( Upload from computer)?|Upload (from computer|files)|Add files|Upload file)$", RegexOptions.IgnoreCase);
+                var menu = _page.GetByRole(AriaRole.Menuitem, new() { NameRegex = uploadName })
+                    .Or(_page.GetByRole(AriaRole.Button, new() { NameRegex = uploadName }));
                 if (await menu.CountAsync() == 1 && await menu.IsVisibleAsync())
                 {
                     await menu.ClickAsync(new() { Timeout = 5000 }).WaitAsync(ct);

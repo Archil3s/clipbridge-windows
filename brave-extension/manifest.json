@@ -3,7 +3,7 @@
   "name": "ClipBridge Auto Attach",
   "short_name": "ClipBridge",
   "description": "Paired local clip batches in normal Brave. Optional auto-send only after explicit enablement and tab arming.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "minimum_chrome_version": "116",
   "background": {
     "service_worker": "background.js"

@@ -71,7 +71,7 @@ internal static class AutomaticUploadTests
             ChromiumSandbox = true,
             ExecutablePath = Environment.GetEnvironmentVariable("CHROMIUM_EXE")
         });
-        foreach (string mode in new[] { "auto", "menu", "new-chat", "pending", "disabled", "partial", "error", "draft", "edit", "cancel", "navigation", "uncertain-send" })
+        foreach (string mode in new[] { "auto", "menu", "semantic", "new-chat", "pending", "disabled", "partial", "error", "draft", "edit", "cancel", "navigation", "uncertain-send" })
             await BrowserCaseAsync(browser, root, files, mode);
         await CdpCaseAsync(playwright, root, files);
         Console.WriteLine("Synthetic clips/pages only; normal Brave sign-in and live ChatGPT acceptance remain unverified.");
@@ -122,7 +122,7 @@ internal static class AutomaticUploadTests
         Exception? stopped = null;
         try { await runner.RunAsync(cancel.Token); } catch (Exception ex) { stopped = ex; }
         int sends = await page.EvaluateAsync<int>("window.sends.length");
-        if (mode is "auto" or "menu" or "new-chat" or "cdp")
+        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp")
         {
             if (stopped is not null) throw new Exception(mode + " unexpectedly stopped", stopped);
             Check(sends == 2 && queue.Clips.All(clip => clip.State == "Submitted"), mode + ": automatically submits batches of 3+1");
@@ -156,12 +156,20 @@ internal static class AutomaticUploadTests
         <button id="composer-submit-button" type="button" disabled>Send</button></div><div id="turns"></div></main>
         <script>
         const mode=MODE_VALUE,editor=document.querySelector('#prompt-textarea'),chips=document.querySelector('#chips'),send=document.querySelector('#composer-submit-button');
+        const composer=document.querySelector('#composer-background'),plus=document.querySelector('#composer-plus-btn');
+        if(mode==='semantic'){
+          composer.removeAttribute('id');editor.removeAttribute('id');editor.setAttribute('aria-label','Ask ChatGPT');
+          plus.removeAttribute('id');plus.setAttribute('aria-label','Add files and more');
+          send.removeAttribute('id');send.setAttribute('aria-label','Send');
+          for(let i=0;i<2;i++){let unrelated=document.createElement('input');unrelated.type='file';unrelated.multiple=true;unrelated.hidden=true;document.body.append(unrelated);}
+        }
         window.sends=[];window.payloads=[];window.premature=false;
         if(mode==='draft')editor.textContent='Keep my draft';
         function makeInput(){
           let input=document.createElement('input');input.type='file';input.multiple=true;input.accept='video/mp4';input.hidden=true;
-          document.querySelector('#composer-background').append(input);
+          composer.append(input);
           input.onchange=async()=>{
+            if(document.querySelector('button[aria-label="Stop"]'))window.premature=true;
             window.currentFiles=[...input.files];send.disabled=true;chips.replaceChildren();
             for(const file of (mode==='partial'?[...input.files].slice(0,2):input.files)){const chip=document.createElement('span');chip.textContent=file.name;chips.append(chip);}
             const progress=document.createElement('span');progress.setAttribute('role','progressbar');progress.textContent='Uploading';chips.append(progress);
@@ -172,8 +180,13 @@ internal static class AutomaticUploadTests
             if(mode!=='pending')setTimeout(()=>{progress.remove();send.disabled=mode==='disabled';},300);
           };return input;
         }
-        if(mode!=='menu')makeInput();
-        document.querySelector('#composer-plus-btn').onclick=()=>{makeInput().click();};
+        if(mode!=='menu'&&mode!=='semantic')makeInput();
+        plus.onclick=()=>{
+          if(mode==='semantic'){
+            const choice=document.createElement('button');choice.textContent='Add photos & files Upload from computer';
+            choice.onclick=()=>{makeInput().click();choice.remove();};document.body.append(choice);
+          }else makeInput().click();
+        };
         send.onclick=()=>{
           if(chips.querySelector('[role="progressbar"]'))window.premature=true;
           window.sends.push({names:window.currentFiles.map(file=>file.name),message:editor.innerText});
@@ -182,7 +195,9 @@ internal static class AutomaticUploadTests
           chips.replaceChildren();document.querySelectorAll('input').forEach(input=>input.value='');editor.textContent='';send.disabled=true;
           if(mode==='new-chat'&&window.sends.length===1)history.pushState({},'', '/c/generated');
           const stop=document.createElement('button');stop.dataset.testid='stop-button';stop.textContent='Stop';document.body.append(stop);
-          setTimeout(()=>{const reply=document.createElement('div');reply.setAttribute('data-message-author-role','assistant');reply.textContent='Received';document.querySelector('#turns').append(reply);stop.remove();},300);
+          if(mode==='semantic'){stop.removeAttribute('data-testid');stop.setAttribute('aria-label','Stop');}
+          setTimeout(()=>{const reply=document.createElement('div');reply.setAttribute('data-message-author-role','assistant');reply.textContent='Received';document.querySelector('#turns').append(reply);if(mode!=='semantic')stop.remove();},300);
+          if(mode==='semantic')setTimeout(()=>stop.remove(),2200);
         };
         </script></body></html>
         """.Replace("MODE_VALUE", JsonSerializer.Serialize(mode));

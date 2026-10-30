@@ -23,6 +23,7 @@ const wrap = html => '<!doctype html><html><body><main>' + html + '</main></body
       ['textbox data-testid without id', '<div data-type="unified-composer">' + editor.replace('id="prompt-textarea"', 'data-testid="prompt-textarea"') + chips + send + '</div>', true],
       ['unknown empty form with editor id', '<form>' + editor + chips + '</form>', true],
       ['empty composer with only attachment button', '<div>' + editor + chips + '<button id="composer-plus-btn">Attach</button></div>', true],
+      ['current semantic composer with no IDs', '<div><div><div><div><div>' + editor.replace('id="prompt-textarea"', 'aria-label="Ask ChatGPT"') + '</div></div></div></div>' + chips + '<button aria-label="Add files and more">+</button><button aria-label="Start Voice">Voice</button></div>', true],
       ['unrelated search textarea', '<form><textarea placeholder="Search"></textarea>' + send + '</form>', false],
       ['disabled editor', '<form><textarea id="prompt-textarea" disabled></textarea>' + send + '</form>', false],
       ['read-only editor', '<form><textarea id="prompt-textarea" readonly></textarea>' + send + '</form>', false],

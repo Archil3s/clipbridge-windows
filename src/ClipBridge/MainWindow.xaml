@@ -18,7 +18,7 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
             <DockPanel>
-                <TextBlock Text="v0.6.0 - preview" Foreground="#7DD3FC"
+                <TextBlock Text="v0.6.1 - preview" Foreground="#7DD3FC"
                            FontSize="12" DockPanel.Dock="Right" VerticalAlignment="Center" />
                 <TextBlock FontSize="30" FontWeight="Bold" Text="ClipBridge" />
             </DockPanel>
