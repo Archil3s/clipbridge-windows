@@ -1,6 +1,8 @@
 # ClipBridge — Windows Video Splitter
 
-ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.6.2 (preview)**.
+ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.6.3 (preview)**.
+
+Windows 0.6.3 uses High thinking and presses Enter once when each complete batch is ready. It recognizes numbered attachment labels such as `Part_001(3).mp4`, confirms the sent message, saves the conversation address with the batch, and continues in that same chat until the ready queue is empty. Interrupted or uncertain attempts still require review. See the [workflow guide](docs/PLAYWRIGHT-UPLOADS.md).
 
 Windows 0.6.2 opens Brave for manual sign-in without debugging flags or Playwright. Sign in, close that separate window, then click **Start automatic uploads + Send** to reopen the saved profile for uploads. Resuming an open automation conversation preserves its page state and browser preferences. Visible verification pages pause the run and disconnect Playwright. Cloudflare acceptance and live ChatGPT uploads still require verification on your account. It includes the composer fixes from 0.6.1; the optional extension remains at 0.3.2.
 

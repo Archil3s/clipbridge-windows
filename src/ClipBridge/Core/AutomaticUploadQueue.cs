@@ -123,6 +123,19 @@ public sealed class AutomaticUploadQueue : IDisposable
         Commit(Settings with { Clips = Clips.Where(clip => !ids.Contains(clip.Fingerprint)).ToList() });
     }
 
+    public void ConfirmSubmitted(IReadOnlyList<AutomaticClip> batch, string conversationUrl)
+    {
+        string url = ValidateUrl(conversationUrl);
+        if (!url.StartsWith("https://chatgpt.com/c/", StringComparison.Ordinal))
+            throw new InvalidOperationException("The sent batch has no saved conversation address yet. Review it before continuing.");
+        if (batch.Count == 0 || batch.Any(item => !Clips.Any(clip =>
+            clip.Fingerprint == item.Fingerprint && clip.State == "Send attempted")))
+            throw new InvalidOperationException("Upload queue changed; review it before continuing.");
+        var ids = batch.Select(item => item.Fingerprint).ToHashSet();
+        Commit(Settings with { ConversationUrl = url,
+            Clips = Clips.Select(clip => ids.Contains(clip.Fingerprint) ? clip with { State = "Submitted" } : clip).ToList() });
+    }
+
     public void RetryReviewed(IEnumerable<AutomaticClip> selected)
     {
         var ids = selected.Select(item => item.Fingerprint).ToHashSet();

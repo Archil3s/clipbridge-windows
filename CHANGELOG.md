@@ -4,6 +4,13 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.3 same-chat batch submission
+- Recognize numbered attachment display names such as `Part_001(3).mp4` and filenames split across nested elements. Keep filename counts distinct and reject missing or mismatched files.
+- Select and verify High thinking using supported semantic menu or slider controls before attachment; pause when the control is unknown or the setting changes during upload.
+- Press Enter once after all attachment names, upload indicators, unchanged batch text and enabled Send agree. Do not retry Enter or fall back to clicking Send when confirmation is uncertain.
+- Save the new conversation address and submitted batch together in one atomic queue update. Continue remaining batches in that same chat after each response finishes; retain uncertain attempts for review.
+- Recognize article-based conversation roles and show specific waiting reasons. Test three consecutive batches (3+3+1) in one new chat, renamed/nested filenames, High selection, persistent recovery and failed-send guards with synthetic pages and clips.
+
 ### Windows 0.6.2 manual sign-in handoff
 - Open the dedicated Brave profile for manual sign-in without debugging flags or Playwright. After the user closes that window, Start reopens the saved profile for uploads. Preserve browser preferences with CDP `NoDefaults`; reuse an already-open automation conversation without navigation or reload.
 - On resume, stop on a missing or ambiguous conversation instead of creating another tab. Leave the browser open and disconnect after every completed, stopped or failed run.
@@ -36,6 +43,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.3] - 2026-10-31 (preview)
+
+Adds High thinking selection and one automatic Enter per ready batch, handles numbered attachment display names, and durably binds all remaining batches to the same conversation. Live ChatGPT acceptance still requires verification.
 
 ## [0.6.2] - 2026-10-30 (preview)
 

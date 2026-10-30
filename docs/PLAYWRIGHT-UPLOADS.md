@@ -1,10 +1,10 @@
-# Automatic uploads with Playwright (Windows 0.6.2)
+# Automatic uploads with Playwright (Windows 0.6.3)
 
 This workflow uploads prepared clips and sends each batch automatically after you start it. It does not require the Brave extension or its local file-transfer bridge. Playwright supplies the local file paths directly to the browser file input, avoiding the extension's base64 chunk transfers.
 
 ## Start
 
-1. Close ClipBridge and its separate automation Brave windows, install Windows 0.6.2, then open **Automatic uploads (Playwright)**. Your normal Brave windows can stay open. Version 0.6.2 separates manual sign-in from the automation connection; it also includes the composer compatibility changes from 0.6.1.
+1. Close ClipBridge and its separate automation Brave windows, install Windows 0.6.3, then open **Automatic uploads (Playwright)**. Your normal Brave windows can stay open. This version includes the separate manual sign-in flow from 0.6.2.
 2. Choose **Choose clip folder** and select the folder containing your finished MP4/MOV/M4V/WebM clips. The saved queue is separate from source videos waiting to be split. Clips already prepared by the current ClipBridge job are imported when this window opens.
 3. Leave the conversation link at `https://chatgpt.com/` for a new chat, or paste an existing `https://chatgpt.com/c/...` conversation link.
 4. Choose clips per message and the message to send with each batch. Start with 3. The maximum 10 is a local setting, not a detected account limit; the batch also has a 1 GB cap. Large clips can reduce the count.
@@ -15,7 +15,11 @@ When resuming an existing automation window, Start uses its matching conversatio
 
 If verification appears during a run, ClipBridge pauses and disconnects Playwright. Finish verification yourself before starting again. Unattempted clips stay ready; attachments or sends already attempted require review before retrying. If verification keeps looping while automation is stopped, leave the run paused and use the site's verification troubleshooting or support. These changes prevent ClipBridge from connecting during sign-in or changing browser preferences; they do not guarantee that Google, ChatGPT or Cloudflare will accept the session. See [Cloudflare's challenge troubleshooting](https://developers.cloudflare.com/cloudflare-challenges/troubleshooting/challenge-solve-issues/).
 
-The uploader attaches a batch, waits for all filenames and a ready Send button with no upload indicators, sends once, confirms the new user message, waits for the response to finish, and proceeds to the next batch. A home-page chat can receive its new conversation URL after the first confirmed message; that URL is saved for later runs.
+The uploader selects and verifies **High** thinking before attaching a batch. It waits for every filename, unchanged batch text and an enabled Send button with no upload indicators, then presses **Enter once**. Numbered display names such as `Part_001(3).mp4` can match `Part_001.mp4`; missing files or incorrect counts still pause the run. The status explains whether it is waiting for filenames, upload progress or an enabled Send button.
+
+After the new user message appears and the composer clears, ClipBridge saves the submitted batch and its conversation address in one atomic update. It waits for the response to finish, attaches the next set to that same conversation, and repeats until no ready clips remain. If a new chat has not acquired its conversation address, the next batch does not start. An unconfirmed Enter is never repeated or followed by a fallback Send click.
+
+If you already sent a batch manually, paste that chat's full `https://chatgpt.com/c/...` address into ClipBridge before continuing. Do not retry earlier attempted clips unless you have checked they were not sent. The update preserves these uncertainty records instead of silently replaying them. If thinking effort cannot be identified, select High yourself in ChatGPT and restart; unsupported controls pause before attachment.
 
 The browser must stay open. Start brings the chosen tab to the front. Avoid editing the active upload conversation while the queue runs. A stopped or completed run disconnects Playwright and leaves Brave open.
 

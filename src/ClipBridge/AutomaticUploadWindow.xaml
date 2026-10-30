@@ -7,7 +7,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="24">
             <TextBlock Text="Automatic ChatGPT uploads" FontSize="26" FontWeight="Bold" />
-            <TextBlock Text="Choose your prepared clips, sign in once, then start. Playwright attaches each batch, waits for uploads, sends the message and continues."
+            <TextBlock Text="Uses High thinking, waits for every attachment, then presses Enter once. Each confirmed batch continues in the same chat until no ready clips remain."
                        Foreground="#C4D7CD" TextWrapping="Wrap" Margin="0,8,0,18" />
             <StackPanel x:Name="SettingsPanel">
                 <WrapPanel Margin="0,0,0,12">
