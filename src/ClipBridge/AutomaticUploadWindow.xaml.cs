@@ -111,10 +111,10 @@ public partial class AutomaticUploadWindow : Window
             OpenButton.IsEnabled = StartUploadButton.IsEnabled = false;
             StopButton.IsEnabled = true;
             _cancellation = new CancellationTokenSource();
-            UploadStatus.Text = "Opening the saved automation Brave profile...";
-            await _session.OpenAsync(_queue.Settings.ConversationUrl, _cancellation.Token);
             if (upload)
             {
+                UploadStatus.Text = "Opening your saved Brave profile for uploads. The manual sign-in window must be closed first.";
+                await _session.OpenAsync(_queue.Settings.ConversationUrl, _cancellation.Token);
                 var runner = new PlaywrightChatUploader(_session.Page!, _queue, message =>
                 {
                     UploadStatus.Text = message;
@@ -123,7 +123,12 @@ public partial class AutomaticUploadWindow : Window
                 });
                 await runner.RunAsync(_cancellation.Token);
             }
-            else UploadStatus.Text = "Sign in yourself in the automation browser, then click Start automatic uploads + Send here.";
+            else
+            {
+                UploadStatus.Text = "Opening Brave for manual sign-in. Playwright is disconnected.";
+                await _session.OpenForSignInAsync(_queue.Settings.ConversationUrl, _cancellation.Token);
+                UploadStatus.Text = "Sign in and finish verification yourself in the separate Brave window. Once the chat loads, close that window, then click Start automatic uploads + Send. Your login stays saved.";
+            }
         }
         catch (OperationCanceledException) { UploadStatus.Text = "Stopped. Review any batch already attached or sent before retrying."; }
         catch (Exception ex) { UploadStatus.Text = "Paused: " + ex.Message; }

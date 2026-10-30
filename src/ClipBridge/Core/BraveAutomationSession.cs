@@ -8,25 +8,57 @@ namespace ClipBridge.Core;
 
 public sealed class BraveAutomationSession : IDisposable
 {
-    private readonly string _profile = Path.Combine(AutomaticUploadQueue.Folder, "PlaywrightBraveProfile");
+    private readonly string _profile;
+    private readonly string? _browserPath;
+    private readonly Func<ProcessStartInfo, Process?> _start;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
     public IPage? Page { get; private set; }
+
+    public BraveAutomationSession() : this(Path.Combine(AutomaticUploadQueue.Folder, "PlaywrightBraveProfile")) { }
+
+    internal BraveAutomationSession(string profile, string? browserPath = null, Func<ProcessStartInfo, Process?>? start = null)
+    {
+        _profile = profile;
+        _browserPath = browserPath;
+        _start = start ?? Process.Start;
+    }
+
+    public async Task OpenForSignInAsync(string url, CancellationToken ct)
+    {
+        Dispose();
+        url = AutomaticUploadQueue.ValidateUrl(url);
+        if (await FindEndpointAsync(ct) is not null)
+            throw new IOException("Close the ClipBridge automation Brave windows first, then click Open browser / sign in again. Your usual Brave windows can stay open.");
+        Directory.CreateDirectory(_profile);
+        ct.ThrowIfCancellationRequested();
+        using var process = _start(CreateStartInfo(url, automation: false)) ?? throw new IOException("Could not start Brave.");
+    }
+
+    private ProcessStartInfo CreateStartInfo(string url, bool automation)
+    {
+        var start = new ProcessStartInfo(_browserPath ?? BraveBrowserLocator.FindRequired()) { UseShellExecute = false };
+        start.ArgumentList.Add("--user-data-dir=" + _profile);
+        if (automation)
+        {
+            start.ArgumentList.Add("--remote-debugging-address=127.0.0.1");
+            start.ArgumentList.Add("--remote-debugging-port=0");
+        }
+        start.ArgumentList.Add("--new-window");
+        start.ArgumentList.Add(url);
+        return start;
+    }
 
     public async Task OpenAsync(string url, CancellationToken ct)
     {
         url = AutomaticUploadQueue.ValidateUrl(url);
         string? endpoint = await FindEndpointAsync(ct);
+        bool launched = endpoint is null;
         if (endpoint is null)
         {
             Directory.CreateDirectory(_profile);
-            var start = new ProcessStartInfo(BraveBrowserLocator.FindRequired()) { UseShellExecute = false };
-            start.ArgumentList.Add("--user-data-dir=" + _profile);
-            start.ArgumentList.Add("--remote-debugging-address=127.0.0.1");
-            start.ArgumentList.Add("--remote-debugging-port=0");
-            start.ArgumentList.Add("--new-window");
-            start.ArgumentList.Add(url);
-            using var process = Process.Start(start) ?? throw new IOException("Could not start Brave.");
+            ct.ThrowIfCancellationRequested();
+            using var process = _start(CreateStartInfo(url, automation: true)) ?? throw new IOException("Could not start Brave.");
             var deadline = DateTime.UtcNow.AddSeconds(30);
             while (endpoint is null && DateTime.UtcNow < deadline)
             {
@@ -34,16 +66,27 @@ public sealed class BraveAutomationSession : IDisposable
                 endpoint = await FindEndpointAsync(ct);
             }
         }
-        if (endpoint is null) throw new IOException("Close the ClipBridge automation Brave window, then open it again from ClipBridge.");
+        if (endpoint is null) throw new IOException("Close all ClipBridge sign-in Brave windows, then click Start again. Your usual Brave windows can stay open.");
         ct.ThrowIfCancellationRequested();
         _playwright ??= await Playwright.CreateAsync();
         ct.ThrowIfCancellationRequested();
         if (_browser is null || !_browser.IsConnected)
-            _browser = await _playwright.Chromium.ConnectOverCDPAsync(endpoint, new() { Timeout = 15000 }).WaitAsync(ct);
+            _browser = await _playwright.Chromium.ConnectOverCDPAsync(endpoint,
+                new() { Timeout = 15000, NoDefaults = true, IsLocal = true }).WaitAsync(ct);
         var context = _browser.Contexts.FirstOrDefault() ?? throw new IOException("The automation browser has no profile context.");
-        Page ??= context.Pages.FirstOrDefault(page => page.Url.TrimEnd('/') == url);
-        if (Page is null || Page.IsClosed) Page = await context.NewPageAsync().WaitAsync(ct);
-        if (Page.Url.TrimEnd('/') != url) await Page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 60000 }).WaitAsync(ct);
+        var candidates = context.Pages.Where(page => !page.IsClosed && page.Url.TrimEnd('/') == url).ToArray();
+        var pageDeadline = DateTime.UtcNow.AddSeconds(15);
+        while (launched && candidates.Length == 0 && DateTime.UtcNow < pageDeadline)
+        {
+            await Task.Delay(250, ct);
+            candidates = context.Pages.Where(page => !page.IsClosed && page.Url.TrimEnd('/') == url).ToArray();
+        }
+        Page = candidates.Length switch
+        {
+            1 => candidates[0],
+            0 => throw new IOException("Open the chosen conversation in the ClipBridge Brave window and finish signing in. Copy its address into the conversation link, then click Start."),
+            _ => throw new IOException("More than one ClipBridge Brave tab has this conversation open. Close the duplicate tabs, then click Start.")
+        };
         await Page.BringToFrontAsync().WaitAsync(ct);
         ct.ThrowIfCancellationRequested();
     }

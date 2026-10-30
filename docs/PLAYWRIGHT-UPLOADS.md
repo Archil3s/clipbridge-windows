@@ -1,19 +1,23 @@
-# Automatic uploads with Playwright (Windows 0.6.1)
+# Automatic uploads with Playwright (Windows 0.6.2)
 
 This workflow uploads prepared clips and sends each batch automatically after you start it. It does not require the Brave extension or its local file-transfer bridge. Playwright supplies the local file paths directly to the browser file input, avoiding the extension's base64 chunk transfers.
 
 ## Start
 
-1. Install Windows 0.6.1 and open **Automatic uploads (Playwright)**. Version 0.6.1 recognizes the current labelled message box and attachment popover, fixing the indefinite-looking wait in 0.6.0.
+1. Close ClipBridge and its separate automation Brave windows, install Windows 0.6.2, then open **Automatic uploads (Playwright)**. Your normal Brave windows can stay open. Version 0.6.2 separates manual sign-in from the automation connection; it also includes the composer compatibility changes from 0.6.1.
 2. Choose **Choose clip folder** and select the folder containing your finished MP4/MOV/M4V/WebM clips. The saved queue is separate from source videos waiting to be split. Clips already prepared by the current ClipBridge job are imported when this window opens.
 3. Leave the conversation link at `https://chatgpt.com/` for a new chat, or paste an existing `https://chatgpt.com/c/...` conversation link.
 4. Choose clips per message and the message to send with each batch. Start with 3. The maximum 10 is a local setting, not a detected account limit; the batch also has a 1 GB cap. Large clips can reduce the count.
-5. Click **Open automation browser / sign in**. Sign in yourself in that Brave window. This is a separate saved profile; your usual Brave login is not copied. If Google or ChatGPT requires verification or rejects sign-in, resolve it yourself using the options the site provides. ClipBridge does not automate authentication or bypass checks.
-6. Return to ClipBridge and click **Start automatic uploads + Send**. Starting authorizes the displayed queue and batch message in the selected conversation.
+5. Click **Open browser / sign in**. Sign in and complete any verification yourself. This launch has no debugging flags and no Playwright connection. If an earlier automation Brave window is open, close that separate window first. Your usual Brave login is not copied.
+6. Once the chat loads, close all windows belonging to this separate sign-in profile. Then click **Start automatic uploads + Send**. ClipBridge reopens the same saved profile with your selected conversation and connects Playwright. Starting authorizes the displayed queue and batch message. You only need to repeat manual sign-in if the site requests it again.
+
+When resuming an existing automation window, Start uses its matching conversation tab without reloading or navigating it. If no matching tab is open, open the chosen chat yourself or copy its address into ClipBridge. Close duplicate tabs with the same address before resuming.
+
+If verification appears during a run, ClipBridge pauses and disconnects Playwright. Finish verification yourself before starting again. Unattempted clips stay ready; attachments or sends already attempted require review before retrying. If verification keeps looping while automation is stopped, leave the run paused and use the site's verification troubleshooting or support. These changes prevent ClipBridge from connecting during sign-in or changing browser preferences; they do not guarantee that Google, ChatGPT or Cloudflare will accept the session. See [Cloudflare's challenge troubleshooting](https://developers.cloudflare.com/cloudflare-challenges/troubleshooting/challenge-solve-issues/).
 
 The uploader attaches a batch, waits for all filenames and a ready Send button with no upload indicators, sends once, confirms the new user message, waits for the response to finish, and proceeds to the next batch. A home-page chat can receive its new conversation URL after the first confirmed message; that URL is saved for later runs.
 
-The browser must stay open. You can use other windows; this workflow does not require its tab to stay focused. Avoid editing the active upload conversation while the queue runs.
+The browser must stay open. Start brings the chosen tab to the front. Avoid editing the active upload conversation while the queue runs. A stopped or completed run disconnects Playwright and leaves Brave open.
 
 ## Queue and recovery
 
