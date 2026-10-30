@@ -26,6 +26,8 @@ public sealed class PlaywrightChatUploader
         _queue = queue;
         _report = report;
         _conversation = AutomaticUploadQueue.ValidateUrl(page.Url);
+        if (_conversation != AutomaticUploadQueue.ValidateUrl(queue.Settings.ConversationUrl))
+            throw new InvalidOperationException("The open chat does not match the queue's conversation link.");
         _uploadTimeout = uploadTimeout ?? TimeSpan.FromMinutes(15);
     }
 
@@ -51,6 +53,7 @@ public sealed class PlaywrightChatUploader
                 _report("Waiting for the ChatGPT message box. Sign in in the automation browser if needed.");
                 UiState ui = await WaitAsync(batch, "", 0, state => state.Found && !state.Responding, TimeSpan.FromMinutes(2), ct);
                 if (!ui.Empty) throw new InvalidOperationException("The message box contains a draft or attachments. Review them, then start again.");
+                ui = await EnsureHighAsync(ui, batch, ct);
                 IFileChooser? chooser = null;
                 if (ui.Input is null)
                 {
@@ -71,23 +74,30 @@ public sealed class PlaywrightChatUploader
                 if (!ui.Found || ui.Text.Length > 0) throw new InvalidOperationException("The message box changed while attaching. Review the batch before continuing.");
                 await _page.Locator(ui.Editor!).FillAsync(message, new() { Timeout = 5000 }).WaitAsync(ct);
                 _report($"Batch {number}: waiting for all {batch.Count} attachments to finish uploading.");
+                string lastWait = "";
                 ui = await WaitAsync(batch, message, 0, state =>
                 {
                     if (state.Found && state.Text != message) throw new InvalidOperationException("Your draft changed. Automatic sending stopped to preserve your text.");
+                    if (state.Found && state.Thinking != "High") throw new InvalidOperationException("Thinking effort changed. Select High before resuming.");
+                    if (!state.Ready && state.Waiting.Length > 0 && state.Waiting != lastWait)
+                    {
+                        lastWait = state.Waiting;
+                        _report($"Batch {number}: {lastWait}");
+                    }
                     return state.Ready;
                 }, _uploadTimeout, ct, stable: true);
                 int usersBefore = ui.Users;
                 int assistantsBefore = ui.Assistants;
                 _queue.Transition(batch, "Attachment attempted", "Send attempted");
                 ui = await SnapshotAsync(batch, message, usersBefore, ct);
-                if (!ui.Ready || ui.Send is null) throw new InvalidOperationException("Readiness changed before Send. Review this batch manually.");
-                await _page.Locator(ui.Send).ClickAsync(new() { Timeout = 5000 }).WaitAsync(ct);
+                if (!ui.Ready || ui.Editor is null || ui.Thinking != "High") throw new InvalidOperationException("Readiness changed before Send. Review this batch manually.");
+                await _page.Locator(ui.Editor).PressAsync("Enter", new() { Timeout = 5000 }).WaitAsync(ct);
                 _report($"Batch {number}: waiting for the sent message to appear in chat.");
-                await WaitAsync(batch, message, usersBefore, state => state.Confirmed && state.Empty,
+                await WaitAsync(batch, message, usersBefore, state => state.Confirmed && state.Empty &&
+                    _page.Url.StartsWith("https://chatgpt.com/c/", StringComparison.Ordinal),
                     TimeSpan.FromSeconds(45), ct, allowNewConversation: true);
                 _conversation = AutomaticUploadQueue.ValidateUrl(_page.Url);
-                _queue.Transition(batch, "Send attempted", "Submitted");
-                _queue.Configure(_conversation, _queue.Settings.BatchSize, _queue.Settings.Prompt);
+                _queue.ConfirmSubmitted(batch, _conversation);
                 _report($"Batch {number} submitted. Waiting for ChatGPT to finish responding.");
                 await WaitAsync(batch, message, usersBefore,
                     state => state.Assistants > assistantsBefore && !state.Responding,
@@ -98,6 +108,49 @@ public sealed class PlaywrightChatUploader
                 "All queued clips submitted. Review the chat and give ChatGPT your reel instructions.");
         }
         finally { _page.Dialog -= onDialog; }
+    }
+
+    private async Task<UiState> EnsureHighAsync(UiState ui, IReadOnlyList<AutomaticClip> batch, CancellationToken ct)
+    {
+        if (ui.Thinking == "High") return ui;
+        if (ui.ThinkingControl is null)
+            throw new InvalidOperationException("Cannot identify thinking effort. Select High in ChatGPT, then start again. No clips were attached.");
+        _report("Setting thinking effort to High before attaching the batch.");
+        await _page.Locator(ui.ThinkingControl).ClickAsync(new() { Timeout = 5000 }).WaitAsync(ct);
+        var high = _page.GetByRole(AriaRole.Menuitemradio, new() { Name = "High", Exact = true })
+            .Or(_page.GetByRole(AriaRole.Menuitem, new() { Name = "High", Exact = true }))
+            .Or(_page.GetByRole(AriaRole.Radio, new() { Name = "High", Exact = true }))
+            .Or(_page.GetByRole(AriaRole.Option, new() { Name = "High", Exact = true }));
+        var slider = _page.Locator("[role=menu], [data-radix-popper-content-wrapper]").GetByRole(AriaRole.Slider);
+        try
+        {
+            for (int attempt = 0; attempt < 20; attempt++)
+            {
+                CheckContext(ct);
+                if (await high.CountAsync() == 1 && await high.IsVisibleAsync())
+                {
+                    await high.ClickAsync(new() { Timeout = 5000 }).WaitAsync(ct);
+                    break;
+                }
+                if (await slider.CountAsync() == 1 && await slider.IsVisibleAsync())
+                {
+                    await slider.PressAsync("Home", new() { Timeout = 5000 }).WaitAsync(ct);
+                    for (int step = 0; step < 10; step++)
+                    {
+                        CheckContext(ct);
+                        if (await slider.GetAttributeAsync("aria-valuetext") == "High" ||
+                            (await SnapshotAsync(batch, "", 0, ct)).Thinking == "High") break;
+                        await slider.PressAsync("ArrowRight", new() { Timeout = 5000 }).WaitAsync(ct);
+                    }
+                    break;
+                }
+                await Task.Delay(250, ct);
+            }
+        }
+        finally { if (!_page.IsClosed) await _page.Keyboard.PressAsync("Escape"); }
+        ui = await WaitAsync(batch, "", 0, state => state.Found && state.Thinking == "High", TimeSpan.FromSeconds(5), ct);
+        if (!ui.Empty) throw new InvalidOperationException("The composer changed while setting High. Review it before continuing.");
+        return ui;
     }
 
     private async Task<(UiState State, IFileChooser? Chooser)> FindFileTargetAsync(
@@ -185,6 +238,9 @@ public sealed class PlaywrightChatUploader
         [JsonPropertyName("empty")] public bool Empty { get; set; }
         [JsonPropertyName("text")] public string Text { get; set; } = "";
         [JsonPropertyName("ready")] public bool Ready { get; set; }
+        [JsonPropertyName("thinking")] public string Thinking { get; set; } = "";
+        [JsonPropertyName("thinkingControl")] public string? ThinkingControl { get; set; }
+        [JsonPropertyName("waiting")] public string Waiting { get; set; } = "";
         [JsonPropertyName("editor")] public string? Editor { get; set; }
         [JsonPropertyName("send")] public string? Send { get; set; }
         [JsonPropertyName("input")] public string? Input { get; set; }

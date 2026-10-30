@@ -77,6 +77,27 @@ internal static class AutomaticUploadTests
         }
         foreach (string file in large) { using var stream = File.Create(file); }
 
+        string confirmation = Path.Combine(root, "confirmation.json");
+        using (var queue = new AutomaticUploadQueue(confirmation))
+        {
+            queue.Add(files);
+            var batch = queue.NextBatch(3);
+            queue.Transition(batch, "Ready", "Send attempted");
+            Directory.CreateDirectory(confirmation + ".tmp");
+            bool failedWrite = false;
+            try { queue.ConfirmSubmitted(batch, "https://chatgpt.com/c/one-chat"); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { failedWrite = true; }
+            Check(failedWrite && queue.Settings.ConversationUrl == "https://chatgpt.com/" &&
+                queue.Clips.Count(clip => clip.State == "Send attempted") == 3,
+                "failed confirmation leaves both queue state and conversation binding unchanged");
+            Directory.Delete(confirmation + ".tmp");
+            queue.ConfirmSubmitted(batch, "https://chatgpt.com/c/one-chat");
+        }
+        using (var queue = new AutomaticUploadQueue(confirmation))
+            Check(queue.Settings.ConversationUrl == "https://chatgpt.com/c/one-chat" &&
+                queue.Clips.Count(clip => clip.State == "Submitted") == 3 && queue.NextBatch(3).Count == 1,
+                "confirmed submission restores its chat address and remaining batch together after restart");
+
         using var playwright = await Playwright.CreateAsync();
         await using var browser = await playwright.Chromium.LaunchAsync(new()
         {
@@ -85,7 +106,9 @@ internal static class AutomaticUploadTests
             ExecutablePath = Environment.GetEnvironmentVariable("CHROMIUM_EXE")
         });
         foreach (string mode in new[] { "auto", "menu", "semantic", "new-chat", "pending", "disabled", "partial", "error", "draft", "edit", "cancel", "navigation", "uncertain-send",
-            "challenge-title", "challenge-form", "challenge-upload", "hidden-challenge" })
+            "challenge-title", "challenge-form", "challenge-upload", "hidden-challenge",
+            "renamed", "same-chat", "high-slider", "wrong-name", "enter-no-send", "high-missing", "high-changed",
+            "duplicate-names", "duplicate-name-missing", "next-chat" })
             await BrowserCaseAsync(browser, root, files, mode);
         await CdpCaseAsync(playwright, root, files);
         Console.WriteLine("Synthetic clips/pages only; normal Brave sign-in and live ChatGPT acceptance remain unverified.");
@@ -157,8 +180,26 @@ internal static class AutomaticUploadTests
         await using var context = await browser.NewContextAsync();
         var page = await context.NewPageAsync();
         await page.RouteAsync("https://chatgpt.com/**", route => route.FulfillAsync(new() { ContentType = "text/html", Body = Fixture(mode) }));
-        string url = mode == "new-chat" ? "https://chatgpt.com/" : "https://chatgpt.com/c/synthetic-reels";
+        string url = mode is "new-chat" or "same-chat" ? "https://chatgpt.com/" : "https://chatgpt.com/c/synthetic-reels";
         await page.GotoAsync(url);
+        if (mode is "duplicate-names" or "duplicate-name-missing")
+        {
+            string folder = Path.Combine(root, mode);
+            Directory.CreateDirectory(folder);
+            string duplicate = Path.Combine(folder, Path.GetFileName(files[0]));
+            File.Copy(files[0], duplicate);
+            files = [files[0], duplicate];
+        }
+        if (mode == "same-chat")
+        {
+            files = files.ToList();
+            for (int i = 4; i < 7; i++)
+            {
+                string file = Path.Combine(root, $"prepared-{i}.mp4");
+                await File.WriteAllBytesAsync(file, Enumerable.Range(0, 16000).Select(n => (byte)((n + i) % 251)).ToArray());
+                files.Add(file);
+            }
+        }
         await RunFixtureAsync(page, root, files, mode);
     }
 
@@ -172,16 +213,19 @@ internal static class AutomaticUploadTests
         {
             if (mode == "cancel" && status.Contains("waiting for all")) cancel.Cancel();
             if (mode == "uncertain-send" && status.Contains("waiting for the sent message")) cancel.CancelAfter(500);
-        }, TimeSpan.FromSeconds(mode is "pending" or "disabled" or "partial" ? 3 : 8));
+            if (mode == "enter-no-send" && status.Contains("waiting for the sent message")) cancel.CancelAfter(500);
+        }, TimeSpan.FromSeconds(mode is "pending" or "disabled" or "partial" or "wrong-name" or "duplicate-name-missing" ? 3 : 8));
         Exception? stopped = null;
         try { await runner.RunAsync(cancel.Token); } catch (Exception ex) { stopped = ex; }
         int sends = await page.EvaluateAsync<int>("window.sends.length");
-        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp" or "hidden-challenge")
+        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp" or "hidden-challenge" or "renamed" or "same-chat" or "high-slider" or "duplicate-names")
         {
             if (stopped is not null) throw new Exception(mode + " unexpectedly stopped", stopped);
-            Check(sends == 2 && queue.Clips.All(clip => clip.State == "Submitted"), mode + ": automatically submits batches of 3+1");
+            Check(sends == (mode == "same-chat" ? 3 : mode == "duplicate-names" ? 1 : 2) && queue.Clips.All(clip => clip.State == "Submitted"), mode + ": automatically submits every queued clip");
             var sizes = await page.EvaluateAsync<int[]>("window.sends.map(batch=>batch.names.length)");
-            Check(sizes.SequenceEqual([3, 1]), mode + ": one multi-file attachment per batch");
+            Check(sizes.SequenceEqual(mode == "same-chat" ? [3, 3, 1] : mode == "duplicate-names" ? [2] : [3, 1]), mode + ": one multi-file attachment per batch");
+            Check(await page.EvaluateAsync<int>("window.enterKeys") == sends, mode + ": exactly one Enter per submitted batch");
+            Check(await page.EvaluateAsync<bool>("window.sends.every(batch=>batch.thinking==='High')"), mode + ": every batch uses High thinking");
             Check(!await page.EvaluateAsync<bool>("window.premature"), mode + ": never sends during upload progress");
             var payloads = await page.EvaluateAsync<JsonElement>("window.payloads");
             foreach (var item in payloads.EnumerateArray())
@@ -192,14 +236,24 @@ internal static class AutomaticUploadTests
                     mode + ": browser receives exact file bytes " + index);
             }
             if (mode == "new-chat") Check(queue.Settings.ConversationUrl == "https://chatgpt.com/c/generated", "new conversation URL saved after confirmed first send");
+            if (mode == "same-chat")
+                Check(queue.Settings.ConversationUrl == "https://chatgpt.com/c/generated" && queue.NextBatch(3).Count == 0 &&
+                    await page.EvaluateAsync<bool>("window.sends.slice(1).every(batch=>batch.url==='https://chatgpt.com/c/generated')"),
+                    "seven clips use one new conversation across three batches until the ready queue is empty");
         }
         else
         {
             Check(stopped is not null, mode + ": automation pauses on the unexpected state");
-            Check(sends == (mode == "uncertain-send" ? 1 : 0), mode + ": no unsafe or repeated Send");
+            Check(sends == (mode is "uncertain-send" or "next-chat" ? 1 : 0), mode + ": no unsafe or repeated Send");
+            if (mode == "next-chat") Check(queue.Clips.Count(clip => clip.State == "Submitted") == 3 &&
+                queue.Clips.Count(clip => clip.State == "Ready") == 1 && queue.Settings.ConversationUrl == "https://chatgpt.com/c/synthetic-reels",
+                "navigation after a submitted batch cannot redirect the remaining clips to another chat");
             if (mode == "draft") Check(queue.Clips.All(clip => clip.State == "Ready"), "existing draft prevents any file claim");
             if (mode == "edit") Check(await page.Locator("#prompt-textarea").InnerTextAsync() == "Keep my own message", "user draft edits remain intact");
             if (mode == "uncertain-send") Check(queue.Clips.Count(clip => clip.State == "Send attempted") == 3, "uncertain sends remain reserved for review");
+            if (mode == "enter-no-send") Check(queue.Clips.Count(clip => clip.State == "Send attempted") == 3 &&
+                await page.EvaluateAsync<int>("window.enterKeys") == 1, "Enter without confirmation is never repeated or followed by a fallback click");
+            if (mode == "high-missing") Check(queue.Clips.All(clip => clip.State == "Ready"), "unknown thinking control pauses before any attachments");
             if (mode.StartsWith("challenge-", StringComparison.Ordinal))
             {
                 Check(stopped is InvalidOperationException && stopped.Message.Contains("verification"), mode + ": reports verification immediately instead of waiting for a composer");
@@ -215,6 +269,7 @@ internal static class AutomaticUploadTests
         <!doctype html><html><head><meta charset="utf-8"></head><body><main><div id="composer-background">
         <div contenteditable="true" id="prompt-textarea" role="textbox" class="ProseMirror"><p><br></p></div>
         <button id="composer-plus-btn" type="button">Attach</button><div id="chips"></div>
+        <button id="thinking" aria-label="Thinking effort">High</button>
         <button id="composer-submit-button" type="button" disabled>Send</button></div><div id="turns"></div></main>
         <script>
         const mode=MODE_VALUE,editor=document.querySelector('#prompt-textarea'),chips=document.querySelector('#chips'),send=document.querySelector('#composer-submit-button');
@@ -225,7 +280,24 @@ internal static class AutomaticUploadTests
           send.removeAttribute('id');send.setAttribute('aria-label','Send');
           for(let i=0;i<2;i++){let unrelated=document.createElement('input');unrelated.type='file';unrelated.multiple=true;unrelated.hidden=true;document.body.append(unrelated);}
         }
-        window.sends=[];window.payloads=[];window.premature=false;window.challengeClicks=0;
+        window.sends=[];window.payloads=[];window.premature=false;window.challengeClicks=0;window.enterKeys=0;
+        const thinking=document.querySelector('#thinking');
+        if(mode==='high-missing')thinking.remove();
+        if(mode==='same-chat'||mode==='high-slider')thinking.textContent='Medium';
+        thinking.onclick=()=>{
+          const menu=document.createElement('div');menu.setAttribute('role','menu');
+          if(mode==='high-slider'){
+            const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=2;slider.value=1;
+            const update=()=>{thinking.textContent=['Low','Medium','High'][slider.value];slider.setAttribute('aria-valuetext',thinking.textContent);};
+            slider.oninput=update;update();menu.append(slider);
+          }else{
+            const high=document.createElement('button');high.setAttribute('role','menuitemradio');high.textContent='High';
+            high.onclick=()=>{thinking.textContent='High';menu.remove();};menu.append(high);
+          }
+          document.body.append(menu);
+        };
+        document.addEventListener('keydown',event=>{if(event.key==='Escape')document.querySelector('[role="menu"]')?.remove();});
+        editor.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){window.enterKeys++;event.preventDefault();if(mode!=='enter-no-send'&&!send.disabled)send.click();}});
         function challenge(hidden=false){
           const form=document.createElement('form');form.id='challenge-form';form.hidden=hidden;
           const button=document.createElement('button');button.textContent='Verify you are human';button.onclick=e=>{e.preventDefault();window.challengeClicks++;};
@@ -241,11 +313,19 @@ internal static class AutomaticUploadTests
             if(document.querySelector('button[aria-label="Stop"]'))window.premature=true;
             window.currentFiles=[...input.files];send.disabled=true;chips.replaceChildren();
             if(mode==='challenge-upload')challenge();
-            for(const file of (mode==='partial'?[...input.files].slice(0,2):input.files)){const chip=document.createElement('span');chip.textContent=file.name;chips.append(chip);}
+            for(const file of (mode==='partial'?[...input.files].slice(0,2):mode==='duplicate-name-missing'?[input.files[0]]:input.files)){
+              const chip=document.createElement('span');
+              if(['renamed','same-chat','duplicate-names','duplicate-name-missing'].includes(mode)){
+                const name=file.name.replace('.mp4','(3).mp4');chip.title=name;
+                const stem=document.createElement('span');stem.textContent=name.slice(0,-4);const ext=document.createElement('span');ext.textContent='.mp4';chip.append(stem,ext);
+              }else chip.textContent=mode==='wrong-name'?'wrong-'+file.name:file.name;
+              chips.append(chip);
+            }
             const progress=document.createElement('span');progress.setAttribute('role','progressbar');progress.textContent='Uploading';chips.append(progress);
             for(const file of input.files){const bytes=new Uint8Array(await file.arrayBuffer());window.payloads.push({name:file.name,size:file.size,sum:bytes.reduce((a,b)=>a+b,0)});}
             if(mode==='error'){const error=document.createElement('div');error.setAttribute('role','alert');error.textContent='Upload limit reached';document.body.append(error);}
             if(mode==='edit')setTimeout(()=>editor.textContent='Keep my own message',150);
+            if(mode==='high-changed')setTimeout(()=>thinking.textContent='Low',150);
             if(mode==='navigation')setTimeout(()=>history.pushState({},'', '/c/wrong-conversation'),150);
             if(mode!=='pending')setTimeout(()=>{progress.remove();send.disabled=mode==='disabled';},300);
           };return input;
@@ -259,14 +339,15 @@ internal static class AutomaticUploadTests
         };
         send.onclick=()=>{
           if(chips.querySelector('[role="progressbar"]'))window.premature=true;
-          window.sends.push({names:window.currentFiles.map(file=>file.name),message:editor.innerText});
+          window.sends.push({names:window.currentFiles.map(file=>file.name),message:editor.innerText,thinking:thinking.textContent,url:location.href});
           if(mode==='uncertain-send')return;
-          const turn=document.createElement('div');turn.setAttribute('data-message-author-role','user');turn.textContent=editor.innerText;document.querySelector('#turns').append(turn);
+          const turn=document.createElement(mode==='same-chat'?'article':'div');turn.setAttribute(mode==='same-chat'?'data-turn':'data-message-author-role','user');turn.textContent=editor.innerText;document.querySelector('#turns').append(turn);
           chips.replaceChildren();document.querySelectorAll('input').forEach(input=>input.value='');editor.textContent='';send.disabled=true;
-          if(mode==='new-chat'&&window.sends.length===1)history.pushState({},'', '/c/generated');
+          if((mode==='new-chat'||mode==='same-chat')&&window.sends.length===1)history.pushState({},'', '/c/generated');
+          if(mode==='next-chat')setTimeout(()=>history.pushState({},'', '/c/wrong-conversation'),1200);
           const stop=document.createElement('button');stop.dataset.testid='stop-button';stop.textContent='Stop';document.body.append(stop);
           if(mode==='semantic'){stop.removeAttribute('data-testid');stop.setAttribute('aria-label','Stop');}
-          setTimeout(()=>{const reply=document.createElement('div');reply.setAttribute('data-message-author-role','assistant');reply.textContent='Received';document.querySelector('#turns').append(reply);if(mode!=='semantic')stop.remove();},300);
+          setTimeout(()=>{const reply=document.createElement(mode==='same-chat'?'article':'div');reply.setAttribute(mode==='same-chat'?'data-turn':'data-message-author-role','assistant');reply.textContent='Received';document.querySelector('#turns').append(reply);if(mode!=='semantic')stop.remove();},300);
           if(mode==='semantic')setTimeout(()=>stop.remove(),2200);
         };
         </script></body></html>

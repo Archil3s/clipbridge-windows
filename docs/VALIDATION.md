@@ -2,6 +2,8 @@
 
 ## Automated evidence
 
+- Windows 0.6.3: synthetic tests exercise numbered/nested attachment names, High menu and slider selection, one Enter per batch, missing or changed High controls, mismatched filenames and Enter without confirmation. A seven-clip scenario uses article-based conversation roles and submits 3+3+1 to one new chat. Queue tests verify that a failed confirmation write changes neither in-memory state nor conversation binding, and that a successful update restores both after restart. These checks do not establish live ChatGPT upload acceptance.
+
 - Windows 0.6.2: synthetic verification title/form cases stop before claiming files or clicking verification controls; verification appearing during attachment retains only the attempted batch for review. Hidden challenge forms do not block a valid composer. The real loopback CDP test uses the production session and checks retained page state, no duplicate/reloaded tab, preserved dark preference, missing-target rejection, exact-byte batch uploads and browser survival after disconnect. Live Cloudflare acceptance remains unverified.
 
 - Windows 0.6.1 / extension 0.3.2: inspected live composer controls in Brave without submitting files or messages. Observed a role textbox labelled Ask ChatGPT, an Add files and more attachment button, a plain Send label, and a button-based attachment popover with the subtitle Upload from computer. Synthetic regression tests cover this structure, ambiguous hidden inputs, native file chooser handling and waiting for a labelled Stop control to disappear. This validates the compatibility change; full live video acceptance remains unverified.
