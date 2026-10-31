@@ -12,14 +12,10 @@ namespace ClipBridge;
 
 public partial class MainWindow : Window
 {
-    private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".mp4", ".mov", ".mkv", ".avi", ".m4v", ".webm"
-    };
-
     private readonly ObservableCollection<string> _videos = [];
     private CancellationTokenSource? _cancellation;
     private CancellationTokenSource? _setupCancellation;
+    private CancellationTokenSource? _folderCancellation;
     private readonly ChatGptBrowser _chatGptBrowser = new();
     private readonly List<string> _uploadQueue = [];
     private int _uploadPosition;
@@ -31,6 +27,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        VersionLabel.Text = $"v{typeof(MainWindow).Assembly.GetName().Version?.ToString(3)} - preview";
         VideoList.ItemsSource = _videos;
         Loaded += Window_Loaded;
         var bridgeTimer = new System.Windows.Threading.DispatcherTimer
@@ -44,7 +41,7 @@ public partial class MainWindow : Window
             else BraveBridgeQueueLabel.Text = "";
         };
         Loaded += (_, _) => bridgeTimer.Start();
-        Closed += (_, _) => bridgeTimer.Stop();
+        Closed += (_, _) => { bridgeTimer.Stop(); _folderCancellation?.Cancel(); };
         OutputFolderBox.Text = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "ClipBridge");
         var unfinished = _journal.RecoverableInputs();
@@ -88,7 +85,7 @@ public partial class MainWindow : Window
     {
         foreach (string path in paths)
         {
-            if (File.Exists(path) && SupportedExtensions.Contains(Path.GetExtension(path)) && !_videos.Contains(path))
+            if (File.Exists(path) && VideoFileDiscovery.IsSupported(path) && !_videos.Contains(path, StringComparer.OrdinalIgnoreCase))
                 _videos.Add(path);
         }
         StatusLabel.Text = $"{_videos.Count} video(s) in queue";
@@ -107,14 +104,50 @@ public partial class MainWindow : Window
 
     private void Window_DragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Effects = StartButton.IsEnabled && e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
     }
 
-    private void Window_Drop(object sender, DragEventArgs e)
+    private async void Window_Drop(object sender, DragEventArgs e)
     {
+        if (!StartButton.IsEnabled) return;
         if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
-            AddVideos(paths);
+            await AddFolderInputsAsync(paths);
+    }
+
+    private async void AddFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog { Title = "Choose a folder of videos to split" };
+        if (dialog.ShowDialog(this) == true) await AddFolderInputsAsync([dialog.FolderName]);
+    }
+
+    private async Task AddFolderInputsAsync(string[] paths)
+    {
+        if (_folderCancellation is not null) return;
+        _folderCancellation = new CancellationTokenSource();
+        bool recursive = IncludeSubfoldersBox.IsChecked == true;
+        SetBusy(true);
+        Progress.IsIndeterminate = true;
+        StatusLabel.Text = "Finding videos. Cancel stops the scan without changing the queue.";
+        try
+        {
+            var token = _folderCancellation.Token;
+            var found = await Task.Run(() => VideoFileDiscovery.Collect(paths, recursive, token), token);
+            token.ThrowIfCancellationRequested();
+            int before = _videos.Count;
+            AddVideos(found);
+            StatusLabel.Text = found.Count == 0 ? "No supported videos found. The queue was not changed." :
+                $"Added {_videos.Count - before} video(s); {_videos.Count} in queue. Choose settings, then click Split videos.";
+        }
+        catch (OperationCanceledException) { StatusLabel.Text = "Folder scan cancelled. The queue was not changed."; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        { StatusLabel.Text = "Could not add folder: " + ex.Message; }
+        finally
+        {
+            _folderCancellation.Dispose();
+            _folderCancellation = null;
+            SetBusy(false);
+        }
     }
 
     private void ClearButton_Click(object sender, RoutedEventArgs e)
@@ -238,7 +271,7 @@ public partial class MainWindow : Window
                     }
 
                     string[] preparedClips = Directory.EnumerateFiles(result.OutputDirectory, "part_*.*")
-                        .Where(path => SupportedExtensions.Contains(Path.GetExtension(path)))
+                        .Where(path => VideoFileDiscovery.IsSupported(path))
                         .OrderBy(path => path, StringComparer.Ordinal)
                         .ToArray();
                     _uploadQueue.AddRange(preparedClips);
@@ -293,6 +326,8 @@ public partial class MainWindow : Window
         StartButton.IsEnabled = !busy;
         BRollButton.IsEnabled = !busy;
         AddVideosButton.IsEnabled = !busy;
+        AddFolderButton.IsEnabled = !busy;
+        IncludeSubfoldersBox.IsEnabled = !busy;
         AddPreparedButton.IsEnabled = !busy;
         AutomaticUploadButton.IsEnabled = !busy;
         ClearButton.IsEnabled = !busy;
@@ -310,6 +345,7 @@ public partial class MainWindow : Window
     {
         _cancellation?.Cancel();
         _setupCancellation?.Cancel();
+        _folderCancellation?.Cancel();
     }
 
     private void BRollButton_Click(object sender, RoutedEventArgs e)
