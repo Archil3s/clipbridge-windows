@@ -108,7 +108,7 @@ internal static class AutomaticUploadTests
         foreach (string mode in new[] { "auto", "menu", "semantic", "new-chat", "pending", "disabled", "partial", "error", "draft", "edit", "cancel", "navigation", "uncertain-send",
             "challenge-title", "challenge-form", "challenge-upload", "hidden-challenge",
             "renamed", "same-chat", "high-slider", "wrong-name", "enter-no-send", "high-missing", "high-changed",
-            "duplicate-names", "duplicate-name-missing", "next-chat" })
+            "duplicate-names", "duplicate-name-missing", "next-chat", "high-semantic", "high-nested", "high-adjacent" })
             await BrowserCaseAsync(browser, root, files, mode);
         await CdpCaseAsync(playwright, root, files);
         Console.WriteLine("Synthetic clips/pages only; normal Brave sign-in and live ChatGPT acceptance remain unverified.");
@@ -218,7 +218,7 @@ internal static class AutomaticUploadTests
         Exception? stopped = null;
         try { await runner.RunAsync(cancel.Token); } catch (Exception ex) { stopped = ex; }
         int sends = await page.EvaluateAsync<int>("window.sends.length");
-        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp" or "hidden-challenge" or "renamed" or "same-chat" or "high-slider" or "duplicate-names")
+        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp" or "hidden-challenge" or "renamed" or "same-chat" or "high-slider" or "duplicate-names" or "high-semantic" or "high-nested" or "high-adjacent")
         {
             if (stopped is not null) throw new Exception(mode + " unexpectedly stopped", stopped);
             Check(sends == (mode == "same-chat" ? 3 : mode == "duplicate-names" ? 1 : 2) && queue.Clips.All(clip => clip.State == "Submitted"), mode + ": automatically submits every queued clip");
@@ -281,7 +281,15 @@ internal static class AutomaticUploadTests
           for(let i=0;i<2;i++){let unrelated=document.createElement('input');unrelated.type='file';unrelated.multiple=true;unrelated.hidden=true;document.body.append(unrelated);}
         }
         window.sends=[];window.payloads=[];window.premature=false;window.challengeClicks=0;window.enterKeys=0;
-        const thinking=document.querySelector('#thinking');
+        let thinking=document.querySelector('#thinking');
+        if(mode==='high-semantic'){
+          thinking.outerHTML='<div id="thinking" role="button" tabindex="0"><span>High</span></div>';
+          thinking=document.querySelector('#thinking');
+        }
+        if(mode==='high-nested')thinking.innerHTML='<span style="display:none">Select thinking effort</span><span>High</span><svg><title>Chevron down</title></svg>';
+        if(mode==='high-adjacent'){
+          const wrapper=document.createElement('section');composer.before(wrapper);wrapper.append(composer);wrapper.append(thinking);
+        }
         if(mode==='high-missing')thinking.remove();
         if(mode==='same-chat'||mode==='high-slider')thinking.textContent='Medium';
         thinking.onclick=()=>{
@@ -339,7 +347,7 @@ internal static class AutomaticUploadTests
         };
         send.onclick=()=>{
           if(chips.querySelector('[role="progressbar"]'))window.premature=true;
-          window.sends.push({names:window.currentFiles.map(file=>file.name),message:editor.innerText,thinking:thinking.textContent,url:location.href});
+          window.sends.push({names:window.currentFiles.map(file=>file.name),message:editor.innerText,thinking:thinking.innerText.trim(),url:location.href});
           if(mode==='uncertain-send')return;
           const turn=document.createElement(mode==='same-chat'?'article':'div');turn.setAttribute(mode==='same-chat'?'data-turn':'data-message-author-role','user');turn.textContent=editor.innerText;document.querySelector('#turns').append(turn);
           chips.replaceChildren();document.querySelectorAll('input').forEach(input=>input.value='');editor.textContent='';send.disabled=true;

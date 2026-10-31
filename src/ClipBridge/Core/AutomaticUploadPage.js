@@ -72,10 +72,25 @@ if (ui) {
   state.waiting = !namesReady ? 'Waiting to identify every attachment filename.' : c.pending(ui.root) ?
     'Uploads are still processing.' : !ui.button || ui.button.disabled || ui.button.getAttribute('aria-disabled') === 'true' ?
     'Waiting for ChatGPT to enable Send.' : c.responding() ? 'Waiting for the current response to finish.' : '';
-  const thinking = [...ui.root.querySelectorAll('button')].filter(button => verificationVisible(button) &&
-    (/^(High|Medium|Low)$/.test(button.textContent.trim()) || /^(Select )?Thinking effort$/i.test(button.getAttribute('aria-label') || '')));
+  const level = button => {
+    const text = (button.innerText || '').trim();
+    if (/^(High|Medium|Low)$/.test(text)) return text;
+    const labels = [...button.querySelectorAll('span')].filter(element => verificationVisible(element) &&
+      !element.closest('[aria-hidden="true"]') && /^(High|Medium|Low)$/.test(element.innerText.trim()));
+    const levels = [...new Set(labels.map(element => element.innerText.trim()))];
+    return levels.length === 1 ? levels[0] : '';
+  };
+  let thinking = [];
+  for (let scope = ui.root, depth = 0; scope && depth < 4; scope = scope.parentElement, depth++) {
+    if (scope.matches('body, html, main, [role="main"], article, [role="dialog"]') ||
+        scope.querySelector('[data-message-author-role], [data-testid^="conversation-turn"]')) break;
+    thinking = [...scope.querySelectorAll('button, [role="button"]')].filter(button => verificationVisible(button) &&
+      !button.closest('[aria-hidden="true"], [inert]') && (level(button) ||
+        /^(Select )?Thinking effort$/i.test(button.getAttribute('aria-label') || '')));
+    if (thinking.length) break;
+  }
   if (thinking.length === 1) {
-    state.thinking = thinking[0].textContent.trim();
+    state.thinking = level(thinking[0]);
     state.thinkingControl = tag(thinking[0], 'thinking');
   }
   state.editor = tag(ui.editor, 'editor');
