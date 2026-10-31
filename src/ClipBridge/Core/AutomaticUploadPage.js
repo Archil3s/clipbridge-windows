@@ -56,6 +56,7 @@ function batchNames(root, editor, items) {
   return [...counts.values()].every(count => count === 0);
 }
 const state = {
+  focused: document.hasFocus(), visiblePage: document.visibilityState === 'visible',
   found: !!ui, error: c.error(), empty: false, text: '', ready: false,
   thinking: '', thinkingControl: null,
   waiting: '',

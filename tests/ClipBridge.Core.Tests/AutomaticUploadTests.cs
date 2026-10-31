@@ -123,8 +123,9 @@ internal static class AutomaticUploadTests
         Directory.CreateDirectory(profile);
         var start = new ProcessStartInfo(Environment.GetEnvironmentVariable("CHROMIUM_EXE") ?? playwright.Chromium.ExecutablePath)
         { UseShellExecute = false, CreateNoWindow = true };
-        foreach (string argument in new[] { "--headless=new", "--user-data-dir=" + profile, "--remote-debugging-address=127.0.0.1",
-            "--remote-debugging-port=0", "--disable-background-networking", "--no-first-run", "--force-dark-mode", "about:blank" }) start.ArgumentList.Add(argument);
+        foreach (string argument in new[] { "--window-position=-10000,-10000", "--user-data-dir=" + profile, "--remote-debugging-address=127.0.0.1",
+            "--remote-debugging-port=0", "--disable-background-networking", "--no-first-run", "--force-dark-mode",
+            "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding", "about:blank" }) start.ArgumentList.Add(argument);
         using var process = Process.Start(start) ?? throw new Exception("Could not start CDP fixture browser");
         using var cdpDriver = await Playwright.CreateAsync();
         try
@@ -138,6 +139,9 @@ internal static class AutomaticUploadTests
             await fixturePage.RouteAsync("https://chatgpt.com/**", route => route.FulfillAsync(new() { ContentType = "text/html", Body = Fixture("cdp") }));
             await fixturePage.GotoAsync(url);
             await fixturePage.EvaluateAsync("window.clipBridgeFixture = 'existing page'");
+            var windowControl = await fixturePage.Context.NewCDPSessionAsync(fixturePage);
+            int windowId = (await windowControl.SendAsync("Browser.getWindowForTarget"))!.Value.GetProperty("windowId").GetInt32();
+            await windowControl.SendAsync("Browser.setWindowBounds", new Dictionary<string, object> { ["windowId"] = windowId, ["bounds"] = new Dictionary<string, object> { ["windowState"] = "minimized" } });
             cdpDriver.Dispose();
 
             using var session = new BraveAutomationSession(profile);
@@ -167,8 +171,21 @@ internal static class AutomaticUploadTests
             catch (IOException) { wrongTarget = true; }
             Check(wrongTarget && page.Url == url && page.Context.Pages.Count == 1,
                 "missing target stops without navigating the signed-in page or creating a tab");
+            var minimizeControl = await page.Context.NewCDPSessionAsync(page);
+            await minimizeControl.SendAsync("Browser.setWindowBounds", new Dictionary<string, object> {
+                ["windowId"] = windowId, ["bounds"] = new Dictionary<string, object> { ["windowState"] = "minimized" }
+            });
             await session.OpenAsync(url, deadline.Token);
+            var backgroundControl = await session.Page!.Context.NewCDPSessionAsync(session.Page);
+            Check((await backgroundControl.SendAsync("Browser.getWindowBounds", new Dictionary<string, object> { ["windowId"] = windowId }))!.Value
+                .GetProperty("bounds").GetProperty("windowState").GetString() == "minimized",
+                "opening automation preserves the minimized browser window");
+            Check(await session.Page.EvaluateAsync<bool>("document.hasFocus() && document.visibilityState==='visible'"),
+                "the minimized automation page remains focused and active through CDP");
             await RunFixtureAsync(page, root, files, "cdp");
+            Check((await backgroundControl.SendAsync("Browser.getWindowBounds", new Dictionary<string, object> { ["windowId"] = windowId }))!.Value
+                .GetProperty("bounds").GetProperty("windowState").GetString() == "minimized",
+                "all synthetic clip batches submit while the browser stays minimized");
             Check(true, "direct uploads work through a real loopback CDP connection with the browser sandbox enabled");
             session.Dispose();
             using var http = new System.Net.Http.HttpClient(new System.Net.Http.HttpClientHandler { UseProxy = false });
@@ -360,7 +377,11 @@ internal static class AutomaticUploadTests
             if(mode==='edit')setTimeout(()=>editor.textContent='Keep my own message',150);
             if(mode==='high-changed')setTimeout(()=>thinking.textContent='Low',150);
             if(mode==='navigation')setTimeout(()=>history.pushState({},'', '/c/wrong-conversation'),150);
-            if(mode!=='pending')setTimeout(()=>{if(mode!=='chips-adjacent-pending')progress.remove();send.disabled=mode==='disabled';},300);
+            const finish=()=>{
+              if(mode==='cdp'&&(!document.hasFocus()||document.visibilityState!=='visible')){setTimeout(finish,100);return;}
+              if(mode!=='chips-adjacent-pending')progress.remove();send.disabled=mode==='disabled';
+            };
+            if(mode!=='pending')setTimeout(finish,300);
           };return input;
         }
         if(mode!=='menu'&&mode!=='semantic')makeInput();

@@ -4,6 +4,11 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.9 background uploads
+- Keep the connected automation page focused/active through CDP without foregrounding its window. Disable timer throttling, occluded-window backgrounding and renderer deprioritization only for the automation browser launch.
+- Add focus/visibility booleans and a distinct file-picker stage to compact diagnostics.
+- Test the production CDP flow using an actual minimized headed Chromium window and focus-gated synthetic upload completion.
+
 ### Windows 0.6.8 stable post-send routing
 - During confirmation only, wait through unsupported same-origin routes and destroyed execution contexts until a supported stable chat address appears. Keep origin restrictions and the bounded confirmation timeout.
 - Bind submission to the canonical address captured with the confirmation snapshot instead of re-reading a moving browser URL in the predicate or after the wait.
@@ -68,6 +73,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.9] - 2026-10-31 (preview)
+
+- Support background/minimized uploads through page focus emulation and automation-only throttling flags. Live Brave/ChatGPT acceptance remains unverified.
 
 ## [0.6.8] - 2026-10-31 (preview)
 

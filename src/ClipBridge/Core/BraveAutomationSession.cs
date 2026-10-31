@@ -13,6 +13,7 @@ public sealed class BraveAutomationSession : IDisposable
     private readonly Func<ProcessStartInfo, Process?> _start;
     private IPlaywright? _playwright;
     private IBrowser? _browser;
+    private ICDPSession? _focusSession;
     public IPage? Page { get; private set; }
     internal UploadDebugLog? DebugLog { get; set; }
 
@@ -44,6 +45,9 @@ public sealed class BraveAutomationSession : IDisposable
         {
             start.ArgumentList.Add("--remote-debugging-address=127.0.0.1");
             start.ArgumentList.Add("--remote-debugging-port=0");
+            start.ArgumentList.Add("--disable-background-timer-throttling");
+            start.ArgumentList.Add("--disable-backgrounding-occluded-windows");
+            start.ArgumentList.Add("--disable-renderer-backgrounding");
         }
         start.ArgumentList.Add("--new-window");
         start.ArgumentList.Add(url);
@@ -95,7 +99,9 @@ public sealed class BraveAutomationSession : IDisposable
             _ => throw new IOException("More than one ClipBridge Brave tab has this conversation open. Close the duplicate tabs, then click Start.")
         };
         DebugLog?.Stage(UploadDebugStage.BrowserReady);
-        await Page.BringToFrontAsync().WaitAsync(ct);
+        if (_focusSession is not null) await _focusSession.DetachAsync().WaitAsync(ct);
+        _focusSession = await context.NewCDPSessionAsync(Page).WaitAsync(ct);
+        await _focusSession.SendAsync("Emulation.setFocusEmulationEnabled", new Dictionary<string, object> { ["enabled"] = true }).WaitAsync(ct);
         ct.ThrowIfCancellationRequested();
     }
 
@@ -127,6 +133,7 @@ public sealed class BraveAutomationSession : IDisposable
         _playwright?.Dispose();
         _playwright = null;
         _browser = null;
+        _focusSession = null;
         Page = null;
     }
 }
