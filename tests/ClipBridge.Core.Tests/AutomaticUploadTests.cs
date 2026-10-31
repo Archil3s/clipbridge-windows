@@ -215,9 +215,13 @@ internal static class AutomaticUploadTests
             if (mode == "uncertain-send" && status.Contains("waiting for the sent message")) cancel.CancelAfter(500);
             if (mode == "enter-no-send" && status.Contains("waiting for the sent message")) cancel.CancelAfter(500);
         }, TimeSpan.FromSeconds(mode is "pending" or "disabled" or "partial" or "wrong-name" or "duplicate-name-missing" ? 3 : 8));
+        var debug = new UploadDebugLog();
+        runner.DebugLog = debug;
         Exception? stopped = null;
         try { await runner.RunAsync(cancel.Token); } catch (Exception ex) { stopped = ex; }
         int sends = await page.EvaluateAsync<int>("window.sends.length");
+        if (mode == "pending") Check(debug.Export(queue.Clips, page.Url, false).Contains("busy=1"),
+            "debug report captures the real upload-processing wait without page text");
         if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp" or "hidden-challenge" or "renamed" or "same-chat" or "high-slider" or "duplicate-names" or "high-semantic" or "high-nested" or "high-adjacent")
         {
             if (stopped is not null) throw new Exception(mode + " unexpectedly stopped", stopped);

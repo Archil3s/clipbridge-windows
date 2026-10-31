@@ -4,6 +4,11 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.5 upload diagnostics
+- Add Copy debug report during running and paused uploads. Include bounded phase history, readiness checks, queue counts, elapsed waiting time and home/chat mismatch indicators.
+- Exclude raw exceptions, filenames, paths, chat text, full addresses and credentials. Keep reports in memory and copy only on user request.
+- Add bounded-history and privacy regression tests.
+
 ### Windows 0.6.4 High control detection
 - Recognize visible High labels on semantic buttons, nested labels and adjacent composer toolbars. Ignore hidden labels and SVG titles; keep ambiguous controls paused before attachment.
 - Add isolated browser regressions for these three layouts. Live ChatGPT acceptance remains unverified.
@@ -47,6 +52,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.5] - 2026-10-31 (preview)
+
+- Add compact local upload diagnostics and a Copy debug report button for diagnosing stalled batches.
 
 ## [0.6.4] - 2026-10-31 (preview)
 

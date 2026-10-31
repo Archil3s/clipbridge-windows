@@ -49,3 +49,9 @@ This profile is separate from both your normal Brave profile and the retired ear
 The test suite uses synthetic clips and pages in isolated Chromium profiles. It checks durable queue reservations, corrupt-state handling, file changes, URL restrictions, multi-file disk attachments, a real loopback CDP connection, automatic batches, dynamic file pickers, new-chat navigation, disabled Send, missing filenames, pending uploads, errors, edited drafts, cancellation and uncertain sends. Live Google sign-in, real ChatGPT video acceptance and account-specific limits require manual verification.
 
 Implementation references: [Playwright file uploads](https://playwright.dev/dotnet/docs/input#upload-files), [CDP connection API](https://playwright.dev/dotnet/docs/api/class-browsertype#browser-type-connect-over-cdp), and [Chromium's separate-profile guidance for remote debugging](https://developer.chrome.com/blog/remote-debugging-port).
+
+## Debugging a stalled upload
+
+Click **Copy debug report** while the run is stuck or paused, then paste the report into Codex. The button stays enabled during uploads. The report keeps only eight recent state changes in memory, rather than a growing transcript. It includes stage timing, queue totals, attachment-name recognition, upload activity, Send readiness, text matching, thinking effort, sent-message confirmation, response state and conversation-match counts. Repeated unchanged polling is counted rather than repeated in the report.
+
+The report excludes clip names and paths, video data, prompt/chat text, full URLs, raw exception messages, cookies, pairing keys and credentials. It is copied only when you click the button; nothing is sent automatically. Copying does not dismiss or overwrite the upload status. A clipboard-busy message lets you retry copying.

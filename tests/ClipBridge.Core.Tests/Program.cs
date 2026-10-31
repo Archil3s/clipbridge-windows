@@ -12,6 +12,7 @@ string root = Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), "work")
 Directory.CreateDirectory(root);
 try
 {
+    UploadDebugTests.Run();
     if (args.Contains("--automation"))
     {
         await AutomaticUploadTests.RunAsync(root);
