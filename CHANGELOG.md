@@ -4,6 +4,11 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.6 attachment readiness
+- Recognize visible filenames without hidden or SVG-title text. Check a bounded surrounding composer area for sibling attachment cards and upload progress, excluding conversation history and other visible editors.
+- Use the same attachment area for empty-draft and upload-completion checks. Keep name multiplicity, enabled Send, unchanged text and upload-progress guards.
+- Add synthetic regressions for adjacent cards, decorated filenames, adjacent pending uploads with enabled Send and history-only cards.
+
 ### Windows 0.6.5 upload diagnostics
 - Add Copy debug report during running and paused uploads. Include bounded phase history, readiness checks, queue counts, elapsed waiting time and home/chat mismatch indicators.
 - Exclude raw exceptions, filenames, paths, chat text, full addresses and credentials. Keep reports in memory and copy only on user request.
@@ -52,6 +57,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.6] - 2026-10-31 (preview)
+
+- Fix attachment-name readiness for adjacent cards and visible labels; preserve upload and history boundaries. Live ChatGPT acceptance remains unverified.
 
 ## [0.6.5] - 2026-10-31 (preview)
 
