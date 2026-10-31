@@ -92,6 +92,19 @@ public sealed class AutomaticUploadQueue : IDisposable
         return uri.GetLeftPart(UriPartial.Path).TrimEnd('/');
     }
 
+    internal static string BrowserConversationUrl(string value)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            throw new ArgumentException("The browser has no supported conversation address.");
+        return ValidateUrl(uri.GetLeftPart(UriPartial.Path));
+    }
+
+    internal static bool BrowserMatches(string value, string target)
+    {
+        try { return BrowserConversationUrl(value) == ValidateUrl(target); }
+        catch (ArgumentException) { return false; }
+    }
+
     public IReadOnlyList<AutomaticClip> NextBatch(int count)
     {
         if (count is < 1 or > 10) throw new ArgumentOutOfRangeException(nameof(count));

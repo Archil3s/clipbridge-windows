@@ -79,12 +79,12 @@ public sealed class BraveAutomationSession : IDisposable
                 new() { Timeout = 15000, NoDefaults = true, IsLocal = true }).WaitAsync(ct);
         DebugLog?.Stage(UploadDebugStage.SelectTab);
         var context = _browser.Contexts.FirstOrDefault() ?? throw new IOException("The automation browser has no profile context.");
-        var candidates = context.Pages.Where(page => !page.IsClosed && page.Url.TrimEnd('/') == url).ToArray();
+        var candidates = context.Pages.Where(page => !page.IsClosed && AutomaticUploadQueue.BrowserMatches(page.Url, url)).ToArray();
         var pageDeadline = DateTime.UtcNow.AddSeconds(15);
         while (launched && candidates.Length == 0 && DateTime.UtcNow < pageDeadline)
         {
             await Task.Delay(250, ct);
-            candidates = context.Pages.Where(page => !page.IsClosed && page.Url.TrimEnd('/') == url).ToArray();
+            candidates = context.Pages.Where(page => !page.IsClosed && AutomaticUploadQueue.BrowserMatches(page.Url, url)).ToArray();
         }
         DebugLog?.Tabs(context.Pages.Count, candidates.Length,
             context.Pages.Count(page => !page.IsClosed && UploadDebugLog.Kind(page.Url) == "chat"));

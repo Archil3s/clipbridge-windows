@@ -26,7 +26,7 @@ public sealed class PlaywrightChatUploader
         _page = page;
         _queue = queue;
         _report = report;
-        _conversation = AutomaticUploadQueue.ValidateUrl(page.Url);
+        _conversation = AutomaticUploadQueue.BrowserConversationUrl(page.Url);
         if (_conversation != AutomaticUploadQueue.ValidateUrl(queue.Settings.ConversationUrl))
             throw new InvalidOperationException("The open chat does not match the queue's conversation link.");
         _uploadTimeout = uploadTimeout ?? TimeSpan.FromMinutes(15);
@@ -100,15 +100,24 @@ public sealed class PlaywrightChatUploader
                 await _page.Locator(ui.Editor).PressAsync("Enter", new() { Timeout = 5000 }).WaitAsync(ct);
                 DebugLog?.Stage(UploadDebugStage.Confirm);
                 _report($"Batch {number}: waiting for the sent message to appear in chat.");
-                await WaitAsync(batch, message, usersBefore, state => state.Confirmed && state.Empty &&
-                    _page.Url.StartsWith("https://chatgpt.com/c/", StringComparison.Ordinal),
+                bool responseObserved = false;
+                await WaitAsync(batch, message, usersBefore, state =>
+                {
+                    responseObserved |= state.Responding;
+                    return state.Confirmed && state.Empty &&
+                        AutomaticUploadQueue.BrowserConversationUrl(_page.Url).StartsWith("https://chatgpt.com/c/", StringComparison.Ordinal);
+                },
                     TimeSpan.FromSeconds(45), ct, allowNewConversation: true);
-                _conversation = AutomaticUploadQueue.ValidateUrl(_page.Url);
+                _conversation = AutomaticUploadQueue.BrowserConversationUrl(_page.Url);
                 _queue.ConfirmSubmitted(batch, _conversation);
                 DebugLog?.Stage(UploadDebugStage.Response);
                 _report($"Batch {number} submitted. Waiting for ChatGPT to finish responding.");
                 await WaitAsync(batch, message, usersBefore,
-                    state => state.Assistants > assistantsBefore && !state.Responding,
+                    state =>
+                    {
+                        responseObserved |= state.Responding;
+                        return !state.Responding && (state.Assistants > assistantsBefore || responseObserved);
+                    },
                     _uploadTimeout, ct, stable: true);
             }
             DebugLog?.Stage(UploadDebugStage.Complete);
@@ -199,7 +208,7 @@ public sealed class PlaywrightChatUploader
         ct.ThrowIfCancellationRequested();
         if (_page.IsClosed) throw new InvalidOperationException("The automation tab was closed.");
         if (_dialog) throw new InvalidOperationException("A browser dialog needs your attention. Resolve it and start again.");
-        string current = AutomaticUploadQueue.ValidateUrl(_page.Url);
+        string current = AutomaticUploadQueue.BrowserConversationUrl(_page.Url);
         if (current != _conversation && !(allowNewConversation && _conversation == "https://chatgpt.com" &&
                 current.StartsWith("https://chatgpt.com/c/", StringComparison.Ordinal)))
             throw new InvalidOperationException("The conversation changed. Automation stopped.");

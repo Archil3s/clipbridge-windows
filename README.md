@@ -1,6 +1,6 @@
 # ClipBridge — Windows Video Splitter
 
-ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.6.6 (preview)**.
+ClipBridge is a Windows-only C# / WPF desktop application that prepares large videos for smaller file-size uploads. Video work is performed locally using FFmpeg. The source video is left untouched. **Early tester build, v0.6.7 (preview)**.
 
 Windows 0.6.4 recognizes semantic and nested High controls near the composer, uses High thinking and presses Enter once when each complete batch is ready. It recognizes numbered attachment labels such as `Part_001(3).mp4`, confirms the sent message, saves the conversation address with the batch, and continues in that same chat until the ready queue is empty. Interrupted or uncertain attempts still require review. See the [workflow guide](docs/PLAYWRIGHT-UPLOADS.md).
 
