@@ -108,7 +108,7 @@ internal static class AutomaticUploadTests
         foreach (string mode in new[] { "auto", "menu", "semantic", "new-chat", "pending", "disabled", "partial", "error", "draft", "edit", "cancel", "navigation", "uncertain-send",
             "challenge-title", "challenge-form", "challenge-upload", "hidden-challenge",
             "renamed", "same-chat", "high-slider", "wrong-name", "enter-no-send", "high-missing", "high-changed",
-            "duplicate-names", "duplicate-name-missing", "next-chat", "high-semantic", "high-nested", "high-adjacent" })
+            "duplicate-names", "duplicate-name-missing", "next-chat", "high-semantic", "high-nested", "high-adjacent", "chips-adjacent", "chips-icon", "chips-adjacent-pending", "chips-history" })
             await BrowserCaseAsync(browser, root, files, mode);
         await CdpCaseAsync(playwright, root, files);
         Console.WriteLine("Synthetic clips/pages only; normal Brave sign-in and live ChatGPT acceptance remain unverified.");
@@ -214,7 +214,7 @@ internal static class AutomaticUploadTests
             if (mode == "cancel" && status.Contains("waiting for all")) cancel.Cancel();
             if (mode == "uncertain-send" && status.Contains("waiting for the sent message")) cancel.CancelAfter(500);
             if (mode == "enter-no-send" && status.Contains("waiting for the sent message")) cancel.CancelAfter(500);
-        }, TimeSpan.FromSeconds(mode is "pending" or "disabled" or "partial" or "wrong-name" or "duplicate-name-missing" ? 3 : 8));
+        }, TimeSpan.FromSeconds(mode is "pending" or "disabled" or "partial" or "wrong-name" or "duplicate-name-missing" or "chips-adjacent-pending" or "chips-history" ? 3 : 8));
         var debug = new UploadDebugLog();
         runner.DebugLog = debug;
         Exception? stopped = null;
@@ -222,7 +222,7 @@ internal static class AutomaticUploadTests
         int sends = await page.EvaluateAsync<int>("window.sends.length");
         if (mode == "pending") Check(debug.Export(queue.Clips, page.Url, false).Contains("busy=1"),
             "debug report captures the real upload-processing wait without page text");
-        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp" or "hidden-challenge" or "renamed" or "same-chat" or "high-slider" or "duplicate-names" or "high-semantic" or "high-nested" or "high-adjacent")
+        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp" or "hidden-challenge" or "renamed" or "same-chat" or "high-slider" or "duplicate-names" or "high-semantic" or "high-nested" or "high-adjacent" or "chips-adjacent" or "chips-icon")
         {
             if (stopped is not null) throw new Exception(mode + " unexpectedly stopped", stopped);
             Check(sends == (mode == "same-chat" ? 3 : mode == "duplicate-names" ? 1 : 2) && queue.Clips.All(clip => clip.State == "Submitted"), mode + ": automatically submits every queued clip");
@@ -284,6 +284,12 @@ internal static class AutomaticUploadTests
           send.removeAttribute('id');send.setAttribute('aria-label','Send');
           for(let i=0;i<2;i++){let unrelated=document.createElement('input');unrelated.type='file';unrelated.multiple=true;unrelated.hidden=true;document.body.append(unrelated);}
         }
+        if(mode.startsWith('chips-adjacent')){
+          const wrapper=document.createElement('section');composer.before(wrapper);wrapper.append(chips,composer);
+        }
+        if(mode==='chips-history'){
+          const old=document.createElement('article');old.setAttribute('data-message-author-role','user');old.append(chips);document.querySelector('#turns').append(old);
+        }
         window.sends=[];window.payloads=[];window.premature=false;window.challengeClicks=0;window.enterKeys=0;
         let thinking=document.querySelector('#thinking');
         if(mode==='high-semantic'){
@@ -331,6 +337,15 @@ internal static class AutomaticUploadTests
                 const name=file.name.replace('.mp4','(3).mp4');chip.title=name;
                 const stem=document.createElement('span');stem.textContent=name.slice(0,-4);const ext=document.createElement('span');ext.textContent='.mp4';chip.append(stem,ext);
               }else chip.textContent=mode==='wrong-name'?'wrong-'+file.name:file.name;
+              if(mode==='chips-icon'){
+                chip.replaceChildren();
+                const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+                const title=document.createElementNS('http://www.w3.org/2000/svg','title');title.textContent='Video file';svg.append(title);
+                const stem=document.createElement('span');stem.textContent=file.name.slice(0,-4);
+                const ext=document.createElement('span');ext.textContent='.mp4';
+                const hidden=document.createElement('span');hidden.hidden=true;hidden.textContent='Remove attachment';
+                chip.append(svg,stem,ext,hidden);
+              }
               chips.append(chip);
             }
             const progress=document.createElement('span');progress.setAttribute('role','progressbar');progress.textContent='Uploading';chips.append(progress);
@@ -339,7 +354,7 @@ internal static class AutomaticUploadTests
             if(mode==='edit')setTimeout(()=>editor.textContent='Keep my own message',150);
             if(mode==='high-changed')setTimeout(()=>thinking.textContent='Low',150);
             if(mode==='navigation')setTimeout(()=>history.pushState({},'', '/c/wrong-conversation'),150);
-            if(mode!=='pending')setTimeout(()=>{progress.remove();send.disabled=mode==='disabled';},300);
+            if(mode!=='pending')setTimeout(()=>{if(mode!=='chips-adjacent-pending')progress.remove();send.disabled=mode==='disabled';},300);
           };return input;
         }
         if(mode!=='menu'&&mode!=='semantic')makeInput();

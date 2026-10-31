@@ -32,7 +32,7 @@ function batchNames(root, editor, items) {
   for (const attribute of [null, 'title', 'aria-label']) {
     const nodes = [...root.querySelectorAll(attribute ? '[' + attribute + ']' : '*')]
       .filter(element => !editor.contains(element) && verificationVisible(element))
-      .map(element => ({ element, name: (attribute ? element.getAttribute(attribute) : element.textContent).trim() }))
+      .map(element => ({ element, name: (attribute ? element.getAttribute(attribute) : element.innerText || '').trim() }))
       .filter(item => relevant(item.name));
     const channel = new Map();
     for (const item of nodes.filter(item => !nodes.some(other => other !== item &&
@@ -65,15 +65,24 @@ const state = {
     .some(turn => args.message && turn.textContent.includes(args.message))
 };
 if (ui) {
-  state.empty = c.empty(ui);
+  let attachmentRoot = ui.root;
+  for (let parent = ui.root.parentElement, depth = 0; parent && depth < 4; parent = parent.parentElement, depth++) {
+    if (parent.matches('body, html, main, [role="main"], article, [role="dialog"]') ||
+        parent.querySelector('[data-message-author-role], article[data-turn], [data-testid^="conversation-turn"], [role="dialog"]') ||
+        [...parent.querySelectorAll('[contenteditable="true"], [contenteditable="plaintext-only"], textarea')]
+          .some(editor => editor !== ui.editor && verificationVisible(editor))) break;
+    attachmentRoot = parent;
+  }
+  const attachmentUi = { ...ui, root: attachmentRoot };
+  state.empty = c.empty(attachmentUi);
   state.text = c.text(ui.editor);
-  const namesReady = batchNames(ui.root, ui.editor, args.items || []);
+  const namesReady = batchNames(attachmentRoot, ui.editor, args.items || []);
   state.names = namesReady;
-  state.pending = c.pending(ui.root);
+  state.pending = c.pending(attachmentRoot);
   state.sendEnabled = !!ui.button && !ui.button.disabled && ui.button.getAttribute('aria-disabled') !== 'true';
   state.textMatches = state.text === (args.message || '');
-  state.ready = c.ready(ui, [], args.message || '') === true && namesReady;
-  state.waiting = !namesReady ? 'Waiting to identify every attachment filename.' : c.pending(ui.root) ?
+  state.ready = c.ready(attachmentUi, [], args.message || '') === true && namesReady;
+  state.waiting = !namesReady ? 'Waiting to identify every attachment filename.' : state.pending ?
     'Uploads are still processing.' : !ui.button || ui.button.disabled || ui.button.getAttribute('aria-disabled') === 'true' ?
     'Waiting for ChatGPT to enable Send.' : c.responding() ? 'Waiting for the current response to finish.' : '';
   const level = button => {

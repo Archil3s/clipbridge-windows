@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>ClipBridge</AssemblyName>
     <RootNamespace>ClipBridge</RootNamespace>
-    <Version>0.6.5</Version>
+    <Version>0.6.6</Version>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
