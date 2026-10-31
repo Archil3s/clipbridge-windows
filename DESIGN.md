@@ -42,3 +42,9 @@ The interface should be calm and utilitarian. A new control or decoration must i
 ## Validation before release
 
 Check at least one narrow desktop width, one phone width, keyboard focus/Tab behaviour and an offline dashboard. Review copy and statuses alongside screenshots. The automated build verifies source compilation, not usability or a full design audit.
+
+## Readability pass — Windows 0.6.11
+
+Keep the dark navy/Segoe UI identity. Use brighter secondary text (#CBD5E1), dark input surfaces (#0D1726), visible outlines (#64748B), cyan focus/selection edges and dark teal selections. Disabled controls retain dark surfaces and legible text. Queue states use both words and colour: Ready blue, Submitted green, review amber; errors rose. Main body/control text is 14 DIP with smaller supporting text raised from its former size. B-roll content scrolls when the enlarged controls exceed the window.
+
+The isolated WPF preview harness checks enabled/disabled/selected states at minimum desktop widths, semantic statuses, popup toggling and editable fields, plus measured palette contrast. It does not certify full keyboard, screen-reader, high-contrast-system or live processing usability.

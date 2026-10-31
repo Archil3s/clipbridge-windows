@@ -31,6 +31,13 @@ jobs:
         run: dotnet restore src/ClipBridge/ClipBridge.csproj
       - name: Test local bridge, optional monitoring and B-roll library
         run: dotnet run --project tests/ClipBridge.Core.Tests -c Release
+      - name: Test WPF contrast and control states
+        run: dotnet run --project tests/ClipBridge.Ui.Tests -c Release
+      - name: Upload synthetic WPF theme previews
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipBridge-Theme-Previews
+          path: work/theme-previews/*.png
       - name: Test extension authorization and transfer protocol
         run: node --test tests/brave-extension/extension.test.cjs
       - name: Install existing browser-test dependencies

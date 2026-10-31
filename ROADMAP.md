@@ -35,3 +35,7 @@ Implemented MV3 worker transport, explicit tab/document arming, durable atomic b
 ## Folder split queue
 
 Windows 0.6.10 adds folder selection and folder drag-and-drop, optional recursive discovery, cancellation and duplicate-path handling for the existing sequential splitter. Fresh Windows folder-picker/accessibility review and representative large-folder acceptance testing remain pending.
+
+## Readability and QOL
+
+Windows 0.6.11 adds readable dark control states and rendered WPF preview checks. Suggested next features (not implemented in this release) are recorded in docs/READABILITY-AND-QOL.md, prioritizing safe recovery, pause-after-batch, notifications and adjustable text size.
