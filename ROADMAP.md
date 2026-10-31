@@ -34,7 +34,7 @@ Implemented MV3 worker transport, explicit tab/document arming, durable atomic b
 
 ## Folder split queue
 
-Windows 0.6.10 adds folder selection and folder drag-and-drop, optional recursive discovery, cancellation and duplicate-path handling for the existing sequential splitter. Fresh Windows folder-picker/accessibility review and representative large-folder acceptance testing remain pending.
+Windows 0.6.10 adds folder selection and folder drag-and-drop, optional recursive discovery, cancellation and duplicate-path handling for the existing sequential splitter. Windows 0.6.12 collects all final clips directly in the selected output folder with unique part numbers and source-specific recovery records. Fresh Windows folder-picker/accessibility review and representative large-folder acceptance testing remain pending.
 
 ## Readability and QOL
 

@@ -80,11 +80,11 @@
                 </Grid>
                 <DockPanel>
                     <TextBlock Text="Output folder" VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <Button Content="Browse…" DockPanel.Dock="Right" Click="BrowseOutputButton_Click" />
+                    <Button x:Name="OutputBrowseButton" Content="Browse…" DockPanel.Dock="Right" Click="BrowseOutputButton_Click" />
                     <TextBox x:Name="OutputFolderBox" VerticalContentAlignment="Center" IsReadOnly="True"
                              Text="" ToolTip="Select where processed clips should be saved" />
                 </DockPanel>
-                <TextBlock Text="Fast mode copies streams without quality loss. Compression converts to H.264/AAC and takes longer. Any oversized result is reported, not marked successful."
+                <TextBlock Text="All split clips go into this output folder with unique part numbers. Fast mode copies streams without quality loss. Compression converts to H.264/AAC and takes longer. Oversized results are reported."
                            TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,10,0,0" />
                 <Separator Margin="0,14,0,10" Background="#334155" />
                 <CheckBox x:Name="CloudflareEnabledBox" Content="Enable optional Cloudflare live monitoring"

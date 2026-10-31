@@ -206,6 +206,7 @@ public partial class MainWindow : Window
                 new Progress<string>(message => StatusLabel.Text = message), _cancellation.Token);
             var splitter = new VideoSplitter();
             await splitter.VerifyToolsAsync(_cancellation.Token);
+            var sharedOutput = new SharedSplitOutput(OutputFolderBox.Text);
 
             if (_cloudflareReporter is not null)
             {
@@ -235,9 +236,11 @@ public partial class MainWindow : Window
                 VideoList.SelectedItem = file;
                 SplitResult? result = null;
                 string journalOutput = "";
+                bool reused = false;
                 try
                 {
                     result = _journal.FindCompleted(file, targetMb, compress, crf);
+                    reused = result is not null;
                     if (result is not null)
                     {
                         StatusLabel.Text = $"Reusing validated clips from {current}.";
@@ -260,20 +263,24 @@ public partial class MainWindow : Window
                             _cloudflareReporter?.Publish(new CloudflareStatus(jobId, current,
                                 "processing", p.Percent, p.ClipsDone, p.ClipsTotal, sizeGb));
                         });
-                        result = await splitter.SplitAsync(file, OutputFolderBox.Text,
+                        result = await splitter.SplitAsync(file, sharedOutput.WorkDirectory,
                             targetMb, compress, crf, update, _cancellation.Token);
                         journalOutput = result.OutputDirectory;
                         if (!result.AllWithinLimit)
                             throw new InvalidOperationException(
                                 $"Some segments of {current} exceed {targetMb} MB. " +
                                 $"Try a smaller target or a video with more frequent keyframes. Output: {result.OutputDirectory}");
-                        _journal.SetState(file, targetMb, compress, crf, result.OutputDirectory, "completed");
                     }
 
-                    string[] preparedClips = Directory.EnumerateFiles(result.OutputDirectory, "part_*.*")
-                        .Where(path => VideoFileDiscovery.IsSupported(path))
-                        .OrderBy(path => path, StringComparer.Ordinal)
-                        .ToArray();
+                    string sourceKey = JobJournal.KeyFor(file, targetMb, compress, crf);
+                    string[] sourceClips = SharedSplitOutput.ReadFiles(result.OutputDirectory, sourceKey)
+                        ?? throw new IOException("Prepared clip records are incomplete. Retry this source.");
+                    StatusLabel.Text = $"Collecting clips from {current} into the selected output folder...";
+                    string[] preparedClips = await sharedOutput.CollectAsync(sourceClips, sourceKey, reused, _cancellation.Token);
+                    journalOutput = sharedOutput.DirectoryPath;
+                    result = new SplitResult(sharedOutput.DirectoryPath, preparedClips.Length, true);
+                    _journal.SetState(file, targetMb, compress, crf, journalOutput, "completed");
+                    sharedOutput.RemoveEmptyWorkDirectories();
                     _uploadQueue.AddRange(preparedClips);
                     _braveUploadBridge?.AddFiles(preparedClips);
                     if (_braveUploadBridge is not null)
@@ -289,20 +296,22 @@ public partial class MainWindow : Window
                 }
                 catch (OperationCanceledException)
                 {
-                    _journal.SetState(file, targetMb, compress, crf, journalOutput, "cancelled");
+                    if (!reused) _journal.SetState(file, targetMb, compress, crf, journalOutput, "cancelled");
                     _cloudflareReporter?.Publish(new CloudflareStatus(jobId, current,
                         "cancelled", 0, 0, 0, sizeGb));
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    _journal.SetState(file, targetMb, compress, crf, journalOutput, "failed", ex.Message);
+                    if (!reused) _journal.SetState(file, targetMb, compress, crf, journalOutput, "failed", ex.Message);
                     _cloudflareReporter?.Publish(new CloudflareStatus(jobId, current,
                         "failed", 0, 0, 0, sizeGb));
                     throw;
                 }
             }
-            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) ready. Open Automatic uploads (Playwright) to upload and send the prepared queue.";
+            bool clean = sharedOutput.RemoveEmptyWorkDirectories(completed: true);
+            StatusLabel.Text = $"Complete: {completed} video(s), {_uploadQueue.Count} clip(s) in {sharedOutput.DirectoryPath}. Open Automatic uploads (Playwright) to send them." +
+                (clean ? "" : " Temporary work files remain in the hidden work folder.");
         }
         catch (OperationCanceledException)
         {
@@ -326,6 +335,7 @@ public partial class MainWindow : Window
         StartButton.IsEnabled = !busy;
         BRollButton.IsEnabled = !busy;
         AddVideosButton.IsEnabled = !busy;
+        OutputBrowseButton.IsEnabled = !busy;
         AddFolderButton.IsEnabled = !busy;
         IncludeSubfoldersBox.IsEnabled = !busy;
         AddPreparedButton.IsEnabled = !busy;

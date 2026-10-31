@@ -4,6 +4,12 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.12 shared split output
+- Save all final split clips directly in the selected Output folder with unique part numbers, keeping existing files and source videos.
+- Recover each source from its own manifest in the shared folder; copy valid legacy outputs into that folder without deleting previous outputs.
+- Stage FFmpeg work separately and clean empty temporary directories. Lock destination selection during processing.
+- Test same-named sources, flat output, existing files, cancellation and per-source recovery, including a real FFmpeg run.
+
 ### Windows 0.6.11 readable dark theme
 - Add explicit dark templates for buttons, inputs, lists and dropdowns, including readable disabled states, selection and keyboard-focus indicators.
 - Increase small text, brighten secondary labels, and use labelled blue Ready, green Submitted and amber review states. Add semantic paused/error/completed status colours.
@@ -85,6 +91,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.12] - 2026-11-01 (preview)
+
+- Collect split clips into one selected folder, with unique numbering and per-source recovery. Preserve originals and previous outputs.
 
 ## [0.6.11] - 2026-10-31 (preview)
 

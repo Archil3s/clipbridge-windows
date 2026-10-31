@@ -63,6 +63,7 @@ try
     Check(BRollLibrary.FindClips(root, ["Planting"]).Count == 0, "old tags replaced");
     Check(BRollCutter.SanitizeLabel("../CON") == "__CON", "category cannot escape library directory");
 
+    await SharedSplitOutputTests.RunAsync(root);
     if (args.Contains("--video"))
     {
         string ffmpeg = Path.Combine(DependencyInstaller.ToolsDirectory, "ffmpeg.exe");
@@ -99,6 +100,7 @@ try
         }
         byte[] after = await File.ReadAllBytesAsync(source);
         Check(original.SequenceEqual(after), "source preserved after cut/split/compression");
+        await SharedSplitOutputTests.VideoAsync(source, root);
     }
 
     var key = new string('A', 64);
