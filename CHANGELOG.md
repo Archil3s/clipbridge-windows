@@ -4,6 +4,12 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.11 readable dark theme
+- Add explicit dark templates for buttons, inputs, lists and dropdowns, including readable disabled states, selection and keyboard-focus indicators.
+- Increase small text, brighten secondary labels, and use labelled blue Ready, green Submitted and amber review states. Add semantic paused/error/completed status colours.
+- Preserve editable B-roll categories, fix cramped B-roll headers and add scrolling for enlarged controls.
+- Add isolated WPF rendering and contrast/control-state checks to CI, with clearly labelled synthetic previews. Record QOL suggestions separately from implemented changes.
+
 ### Windows 0.6.10 folder split queue
 - Add Add video folder, optional Include subfolders and folder drag-and-drop to the existing sequential splitter queue.
 - Scan in the background with cancellation and atomic queue addition. Deduplicate normalized Windows paths, skip linked directories during recursion, and preserve same-named videos from different folders.
@@ -79,6 +85,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.11] - 2026-10-31 (preview)
+
+- Improve dark-theme readability and control states across the splitter, upload queue and B-roll library. Add measured contrast and rendered WPF preview checks.
 
 ## [0.6.10] - 2026-10-31 (preview)
 

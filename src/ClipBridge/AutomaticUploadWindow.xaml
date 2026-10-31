@@ -3,12 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ClipBridge - Automatic ChatGPT uploads" Width="940" Height="780"
         MinWidth="760" MinHeight="620" Background="{StaticResource WindowBackground}"
-        Foreground="White" FontFamily="Segoe UI" Closing="Window_Closing">
+        Foreground="White" FontFamily="Segoe UI" FontSize="14" Closing="Window_Closing">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="24">
             <TextBlock Text="Automatic ChatGPT uploads" FontSize="26" FontWeight="Bold" />
             <TextBlock Text="Uses High thinking, waits for every attachment, then presses Enter once. Each confirmed batch continues in the same chat until no ready clips remain."
-                       Foreground="#C4D7CD" TextWrapping="Wrap" Margin="0,8,0,18" />
+                       Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,8,0,18" />
             <StackPanel x:Name="SettingsPanel">
                 <WrapPanel Margin="0,0,0,12">
                     <Button Content="Choose clip folder" Click="Folder_Click" />
@@ -17,32 +17,52 @@
                     <Button Content="Retry reviewed clips" Click="Retry_Click" />
                 </WrapPanel>
                 <ListBox x:Name="ClipsList" Height="185" SelectionMode="Extended"
-                         DisplayMemberPath="Display" Background="#0F172A" Foreground="White"
-                         BorderBrush="#475569" Padding="8" AutomationProperties.Name="Saved automatic upload queue" />
-                <TextBlock x:Name="QueueLabel" Foreground="#C4D7CD" Margin="0,7,0,14" TextWrapping="Wrap" />
+                         Background="{StaticResource InputBackground}" Foreground="White"
+                         BorderBrush="{StaticResource ControlEdge}" Padding="8" AutomationProperties.Name="Saved automatic upload queue">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="170"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding State}" FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource ReviewText}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding State}" Value="Ready"><Setter Property="Foreground" Value="{StaticResource ReadyText}"/></DataTrigger>
+                                                <DataTrigger Binding="{Binding State}" Value="Submitted"><Setter Property="Foreground" Value="{StaticResource SubmittedText}"/></DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" ToolTip="{Binding Path}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock x:Name="QueueLabel" Foreground="{StaticResource TextSecondary}" Margin="0,7,0,14" TextWrapping="Wrap" />
                 <Label Content="ChatGPT conversation link (leave the home link to start a new chat)" Target="{Binding ElementName=UrlBox}" Foreground="White" />
                 <TextBox x:Name="UrlBox" AutomationProperties.Name="ChatGPT conversation link" />
                 <DockPanel Margin="0,12,0,10">
                     <Label Content="Clips per message" Target="{Binding ElementName=BatchBox}" Foreground="White" VerticalAlignment="Center" />
                     <TextBox x:Name="BatchBox" Width="65" HorizontalAlignment="Left" Text="3" AutomationProperties.Name="Clips per message" />
-                    <TextBlock Text="1 to 10; up to 1 GB total per batch. Website limits may be lower." Foreground="#C4D7CD" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0" />
+                    <TextBlock Text="1 to 10; up to 1 GB total per batch. Website limits may be lower." Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0" />
                 </DockPanel>
                 <Label Content="Message sent with each batch" Target="{Binding ElementName=PromptBox}" Foreground="White" />
                 <TextBox x:Name="PromptBox" Height="70" AcceptsReturn="True" TextWrapping="Wrap" MaxLength="1000" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Batch message" />
                 <TextBlock Text="Sign in in the separate Brave window, then close that window before clicking Start. Sign-in runs without debugging or Playwright. Start reopens the saved profile for uploads. Your usual Brave windows can stay open."
-                           Foreground="#C4D7CD" TextWrapping="Wrap" FontSize="12" Margin="0,10,0,12" />
+                           Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" FontSize="13" Margin="0,10,0,12" />
             </StackPanel>
             <WrapPanel Margin="0,4,0,12">
                 <Button x:Name="OpenButton" Content="Open browser / sign in" Click="Open_Click" />
-                <Button x:Name="StartUploadButton" Content="Start automatic uploads + Send" Click="Start_Click" Background="#0369A1" />
+                <Button x:Name="StartUploadButton" Content="Start automatic uploads + Send" Click="Start_Click" Background="{StaticResource PrimaryAccent}" />
                 <Button x:Name="StopButton" Content="Stop" Click="Stop_Click" IsEnabled="False" />
                 <Button Content="Copy debug report" Click="CopyDebug_Click" AutomationProperties.Name="Copy debug report" />
             </WrapPanel>
-            <TextBlock x:Name="DebugCopyStatus" Foreground="#C4D7CD" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+            <TextBlock x:Name="DebugCopyStatus" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
             <TextBlock x:Name="UploadStatus" Text="Ready. Choose a folder of prepared clips. Your queue and settings are saved on this PC."
-                       Foreground="#7DD3FC" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                       Style="{StaticResource StatusText}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
             <TextBlock Text="Starting authorizes automatic uploads and messages in the conversation above. Stop prevents further actions; an upload or message already submitted cannot be recalled. Uncertain attempts stay paused for review."
-                       Foreground="#C4D7CD" TextWrapping="Wrap" FontSize="11" Margin="0,12,0,0" />
+                       Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" FontSize="12" Margin="0,12,0,0" />
         </StackPanel>
     </ScrollViewer>
 </Window>
