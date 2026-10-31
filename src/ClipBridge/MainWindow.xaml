@@ -18,7 +18,7 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
             <DockPanel>
-                <TextBlock Text="v0.6.1 - preview" Foreground="#7DD3FC"
+                <TextBlock x:Name="VersionLabel" Foreground="#7DD3FC"
                            FontSize="12" DockPanel.Dock="Right" VerticalAlignment="Center" />
                 <TextBlock FontSize="30" FontWeight="Bold" Text="ClipBridge" />
             </DockPanel>
@@ -29,12 +29,16 @@
         <Border Grid.Row="1" BorderBrush="#475569" BorderThickness="2" CornerRadius="12"
                 Background="{StaticResource PanelBackground}" Padding="22" Margin="0,0,0,18">
             <StackPanel HorizontalAlignment="Center">
-                <TextBlock Text="Drop videos anywhere in this window" FontSize="17" FontWeight="SemiBold"
+                <TextBlock Text="Drop videos or folders anywhere in this window" FontSize="17" FontWeight="SemiBold"
                            HorizontalAlignment="Center" />
                 <TextBlock Text="or choose one or more MP4, MOV, MKV, or AVI files"
                            Foreground="#94A3B8" HorizontalAlignment="Center" Margin="0,7,0,12" />
-                <Button x:Name="AddVideosButton" Content="Select videos" HorizontalAlignment="Center"
-                        Click="AddVideosButton_Click" />
+                <WrapPanel HorizontalAlignment="Center">
+                    <Button x:Name="AddVideosButton" Content="Select videos" Click="AddVideosButton_Click" />
+                    <Button x:Name="AddFolderButton" Content="Add video folder" Click="AddFolderButton_Click" />
+                </WrapPanel>
+                <CheckBox x:Name="IncludeSubfoldersBox" Content="Include subfolders" Foreground="White"
+                          HorizontalAlignment="Center" Margin="0,8,0,0" />
             </StackPanel>
         </Border>
 

@@ -13,6 +13,7 @@ Directory.CreateDirectory(root);
 try
 {
     UploadDebugTests.Run();
+    VideoFileDiscoveryTests.Run(root);
     if (args.Contains("--automation"))
     {
         await AutomaticUploadTests.RunAsync(root);
