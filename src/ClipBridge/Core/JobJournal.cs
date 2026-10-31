@@ -18,11 +18,12 @@ public sealed class JobJournal
     private readonly object _gate = new();
     private List<JournalEntry> _entries;
 
-    public JobJournal()
+    public JobJournal() : this(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClipBridge", "job-history.json")) { }
+
+    internal JobJournal(string filePath)
     {
-        _filePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ClipBridge", "job-history.json");
+        _filePath = filePath;
         try
         {
             _entries = File.Exists(_filePath)
@@ -65,9 +66,9 @@ public sealed class JobJournal
         JournalEntry? entry;
         lock (_gate) entry = _entries.LastOrDefault(x => x.Key == key && x.State == "completed");
         if (entry is null || !Directory.Exists(entry.OutputDirectory)) return null;
-        string[] clips = Directory.GetFiles(entry.OutputDirectory, "part_*.*");
+        string[]? clips = SharedSplitOutput.ReadFiles(entry.OutputDirectory, key);
         long maxBytes = (long)targetMb * 1_000_000L;
-        if (clips.Length == 0 || clips.Any(x => new FileInfo(x).Length <= 0 || new FileInfo(x).Length > maxBytes))
+        if (clips is null || clips.Length == 0 || clips.Any(x => new FileInfo(x).Length <= 0 || new FileInfo(x).Length > maxBytes))
             return null;
         // A completed job was recorded only after FFmpeg and size validation returned success.
         return new SplitResult(entry.OutputDirectory, clips.Length, true);
