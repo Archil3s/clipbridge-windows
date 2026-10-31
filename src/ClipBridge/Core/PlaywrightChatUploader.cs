@@ -16,6 +16,7 @@ public sealed class PlaywrightChatUploader
     private readonly TimeSpan _uploadTimeout;
     private string _conversation;
     private bool _dialog;
+    internal UploadDebugLog? DebugLog { get; set; }
     private static readonly string Script = "args => {\n" + Resource("ClipBridge.Composer.js") +
         "\n" + Resource("ClipBridge.AutomaticUploadPage.js") + "\n}";
 
@@ -50,9 +51,11 @@ public sealed class PlaywrightChatUploader
             {
                 ct.ThrowIfCancellationRequested();
                 IReadOnlyList<AutomaticClip> batch = _queue.NextBatch(_queue.Settings.BatchSize);
+                DebugLog?.Stage(UploadDebugStage.Composer);
                 _report("Waiting for the ChatGPT message box. Sign in in the automation browser if needed.");
                 UiState ui = await WaitAsync(batch, "", 0, state => state.Found && !state.Responding, TimeSpan.FromMinutes(2), ct);
                 if (!ui.Empty) throw new InvalidOperationException("The message box contains a draft or attachments. Review them, then start again.");
+                DebugLog?.Stage(UploadDebugStage.High);
                 ui = await EnsureHighAsync(ui, batch, ct);
                 IFileChooser? chooser = null;
                 if (ui.Input is null)
@@ -64,6 +67,7 @@ public sealed class PlaywrightChatUploader
                 string[] paths = batch.Select(clip => clip.Path).ToArray();
                 // Persist before attachment: an interrupted browser call has an uncertain outcome.
                 _queue.Transition(batch, "Ready", "Attachment attempted");
+                DebugLog?.Stage(UploadDebugStage.Attach);
                 _report($"Attaching {batch.Count} clip(s) directly from disk. ChatGPT upload is starting.");
                 CheckContext(ct);
                 if (chooser is not null) await chooser.SetFilesAsync(paths, new() { Timeout = 60000 }).WaitAsync(ct);
@@ -75,6 +79,7 @@ public sealed class PlaywrightChatUploader
                 await _page.Locator(ui.Editor!).FillAsync(message, new() { Timeout = 5000 }).WaitAsync(ct);
                 _report($"Batch {number}: waiting for all {batch.Count} attachments to finish uploading.");
                 string lastWait = "";
+                DebugLog?.Stage(UploadDebugStage.UploadReady);
                 ui = await WaitAsync(batch, message, 0, state =>
                 {
                     if (state.Found && state.Text != message) throw new InvalidOperationException("Your draft changed. Automatic sending stopped to preserve your text.");
@@ -91,18 +96,22 @@ public sealed class PlaywrightChatUploader
                 _queue.Transition(batch, "Attachment attempted", "Send attempted");
                 ui = await SnapshotAsync(batch, message, usersBefore, ct);
                 if (!ui.Ready || ui.Editor is null || ui.Thinking != "High") throw new InvalidOperationException("Readiness changed before Send. Review this batch manually.");
+                DebugLog?.Stage(UploadDebugStage.Enter);
                 await _page.Locator(ui.Editor).PressAsync("Enter", new() { Timeout = 5000 }).WaitAsync(ct);
+                DebugLog?.Stage(UploadDebugStage.Confirm);
                 _report($"Batch {number}: waiting for the sent message to appear in chat.");
                 await WaitAsync(batch, message, usersBefore, state => state.Confirmed && state.Empty &&
                     _page.Url.StartsWith("https://chatgpt.com/c/", StringComparison.Ordinal),
                     TimeSpan.FromSeconds(45), ct, allowNewConversation: true);
                 _conversation = AutomaticUploadQueue.ValidateUrl(_page.Url);
                 _queue.ConfirmSubmitted(batch, _conversation);
+                DebugLog?.Stage(UploadDebugStage.Response);
                 _report($"Batch {number} submitted. Waiting for ChatGPT to finish responding.");
                 await WaitAsync(batch, message, usersBefore,
                     state => state.Assistants > assistantsBefore && !state.Responding,
                     _uploadTimeout, ct, stable: true);
             }
+            DebugLog?.Stage(UploadDebugStage.Complete);
             int review = _queue.Clips.Count(clip => clip.State is "Attachment attempted" or "Send attempted");
             _report(review > 0 ? $"Ready clips finished. {review} earlier uncertain clip(s) need review." :
                 "All queued clips submitted. Review the chat and give ChatGPT your reel instructions.");
@@ -208,6 +217,8 @@ public sealed class PlaywrightChatUploader
             items = batch.Select(clip => new { name = clip.Name }).ToArray()
         }).WaitAsync(ct);
         CheckContext(ct, allowNewConversation);
+        DebugLog?.Observe(state.Found, state.Names, state.Pending, state.SendEnabled, state.TextMatches,
+            state.Thinking, state.Responding, state.Confirmed, state.Empty, state.Users, state.Assistants, _page.Url, _conversation);
         if (!string.IsNullOrWhiteSpace(state.Error)) throw new InvalidOperationException(state.Error);
         return state;
     }
@@ -233,6 +244,10 @@ public sealed class PlaywrightChatUploader
 
     private sealed class UiState
     {
+        [JsonPropertyName("names")] public bool Names { get; set; }
+        [JsonPropertyName("pending")] public bool Pending { get; set; }
+        [JsonPropertyName("sendEnabled")] public bool SendEnabled { get; set; }
+        [JsonPropertyName("textMatches")] public bool TextMatches { get; set; }
         [JsonPropertyName("found")] public bool Found { get; set; }
         [JsonPropertyName("error")] public string? Error { get; set; }
         [JsonPropertyName("empty")] public bool Empty { get; set; }

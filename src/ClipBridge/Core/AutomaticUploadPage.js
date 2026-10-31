@@ -68,6 +68,10 @@ if (ui) {
   state.empty = c.empty(ui);
   state.text = c.text(ui.editor);
   const namesReady = batchNames(ui.root, ui.editor, args.items || []);
+  state.names = namesReady;
+  state.pending = c.pending(ui.root);
+  state.sendEnabled = !!ui.button && !ui.button.disabled && ui.button.getAttribute('aria-disabled') !== 'true';
+  state.textMatches = state.text === (args.message || '');
   state.ready = c.ready(ui, [], args.message || '') === true && namesReady;
   state.waiting = !namesReady ? 'Waiting to identify every attachment filename.' : c.pending(ui.root) ?
     'Uploads are still processing.' : !ui.button || ui.button.disabled || ui.button.getAttribute('aria-disabled') === 'true' ?

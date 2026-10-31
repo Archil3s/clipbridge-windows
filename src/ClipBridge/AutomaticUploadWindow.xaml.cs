@@ -13,10 +13,12 @@ public partial class AutomaticUploadWindow : Window
     private CancellationTokenSource? _cancellation;
     private bool _busy;
     private bool _closing;
+    private readonly UploadDebugLog _debug = new();
 
     public AutomaticUploadWindow(IEnumerable<string> prepared)
     {
         InitializeComponent();
+        _session.DebugLog = _debug;
         _queue = new AutomaticUploadQueue();
         try
         {
@@ -103,6 +105,7 @@ public partial class AutomaticUploadWindow : Window
         if (_busy) return;
         try
         {
+            _debug.Stage(upload ? UploadDebugStage.Starting : UploadDebugStage.SignIn);
             SaveSettings();
             if (upload && !_queue.Clips.Any(clip => clip.State == "Ready"))
                 throw new InvalidOperationException("Choose a clip folder or add prepared clips first. Review uncertain attempts before retrying them.");
@@ -121,6 +124,7 @@ public partial class AutomaticUploadWindow : Window
                     UrlBox.Text = _queue.Settings.ConversationUrl;
                     RefreshQueue();
                 });
+                runner.DebugLog = _debug;
                 await runner.RunAsync(_cancellation.Token);
             }
             else
@@ -130,8 +134,8 @@ public partial class AutomaticUploadWindow : Window
                 UploadStatus.Text = "Sign in and finish verification yourself in the separate Brave window. Once the chat loads, close that window, then click Start automatic uploads + Send. Your login stays saved.";
             }
         }
-        catch (OperationCanceledException) { UploadStatus.Text = "Stopped. Review any batch already attached or sent before retrying."; }
-        catch (Exception ex) { UploadStatus.Text = "Paused: " + ex.Message; }
+        catch (OperationCanceledException) { _debug.Stage(UploadDebugStage.Stopped); UploadStatus.Text = "Stopped. Review any batch already attached or sent before retrying."; }
+        catch (Exception ex) { _debug.Failure(ex); UploadStatus.Text = "Paused: " + ex.Message; }
         finally
         {
             _session.Dispose();
@@ -147,6 +151,18 @@ public partial class AutomaticUploadWindow : Window
         }
     }
 
+    private void CopyDebug_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Clipboard.SetText(_debug.Export(_queue.Clips, _queue.Settings.ConversationUrl, _busy));
+            DebugCopyStatus.Text = "Debug report copied. Paste it into Codex.";
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            DebugCopyStatus.Text = "Clipboard is busy. Click Copy debug report again.";
+        }
+    }
     private void Stop_Click(object sender, RoutedEventArgs e)
     {
         _cancellation?.Cancel();

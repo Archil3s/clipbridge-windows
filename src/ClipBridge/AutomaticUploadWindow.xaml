@@ -36,7 +36,9 @@
                 <Button x:Name="OpenButton" Content="Open browser / sign in" Click="Open_Click" />
                 <Button x:Name="StartUploadButton" Content="Start automatic uploads + Send" Click="Start_Click" Background="#0369A1" />
                 <Button x:Name="StopButton" Content="Stop" Click="Stop_Click" IsEnabled="False" />
+                <Button Content="Copy debug report" Click="CopyDebug_Click" AutomationProperties.Name="Copy debug report" />
             </WrapPanel>
+            <TextBlock x:Name="DebugCopyStatus" Foreground="#C4D7CD" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
             <TextBlock x:Name="UploadStatus" Text="Ready. Choose a folder of prepared clips. Your queue and settings are saved on this PC."
                        Foreground="#7DD3FC" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
             <TextBlock Text="Starting authorizes automatic uploads and messages in the conversation above. Stop prevents further actions; an upload or message already submitted cannot be recalled. Uncertain attempts stay paused for review."

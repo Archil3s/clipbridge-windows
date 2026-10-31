@@ -14,6 +14,7 @@ public sealed class BraveAutomationSession : IDisposable
     private IPlaywright? _playwright;
     private IBrowser? _browser;
     public IPage? Page { get; private set; }
+    internal UploadDebugLog? DebugLog { get; set; }
 
     public BraveAutomationSession() : this(Path.Combine(AutomaticUploadQueue.Folder, "PlaywrightBraveProfile")) { }
 
@@ -52,6 +53,7 @@ public sealed class BraveAutomationSession : IDisposable
     public async Task OpenAsync(string url, CancellationToken ct)
     {
         url = AutomaticUploadQueue.ValidateUrl(url);
+        DebugLog?.Stage(UploadDebugStage.Endpoint);
         string? endpoint = await FindEndpointAsync(ct);
         bool launched = endpoint is null;
         if (endpoint is null)
@@ -68,11 +70,14 @@ public sealed class BraveAutomationSession : IDisposable
         }
         if (endpoint is null) throw new IOException("Close all ClipBridge sign-in Brave windows, then click Start again. Your usual Brave windows can stay open.");
         ct.ThrowIfCancellationRequested();
+        DebugLog?.Stage(UploadDebugStage.Driver);
         _playwright ??= await Playwright.CreateAsync();
         ct.ThrowIfCancellationRequested();
+        DebugLog?.Stage(UploadDebugStage.Connect);
         if (_browser is null || !_browser.IsConnected)
             _browser = await _playwright.Chromium.ConnectOverCDPAsync(endpoint,
                 new() { Timeout = 15000, NoDefaults = true, IsLocal = true }).WaitAsync(ct);
+        DebugLog?.Stage(UploadDebugStage.SelectTab);
         var context = _browser.Contexts.FirstOrDefault() ?? throw new IOException("The automation browser has no profile context.");
         var candidates = context.Pages.Where(page => !page.IsClosed && page.Url.TrimEnd('/') == url).ToArray();
         var pageDeadline = DateTime.UtcNow.AddSeconds(15);
@@ -81,12 +86,15 @@ public sealed class BraveAutomationSession : IDisposable
             await Task.Delay(250, ct);
             candidates = context.Pages.Where(page => !page.IsClosed && page.Url.TrimEnd('/') == url).ToArray();
         }
+        DebugLog?.Tabs(context.Pages.Count, candidates.Length,
+            context.Pages.Count(page => !page.IsClosed && UploadDebugLog.Kind(page.Url) == "chat"));
         Page = candidates.Length switch
         {
             1 => candidates[0],
             0 => throw new IOException("Open the chosen conversation in the ClipBridge Brave window and finish signing in. Copy its address into the conversation link, then click Start."),
             _ => throw new IOException("More than one ClipBridge Brave tab has this conversation open. Close the duplicate tabs, then click Start.")
         };
+        DebugLog?.Stage(UploadDebugStage.BrowserReady);
         await Page.BringToFrontAsync().WaitAsync(ct);
         ct.ThrowIfCancellationRequested();
     }
