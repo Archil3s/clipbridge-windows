@@ -4,6 +4,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.4 High control detection
+- Recognize visible High labels on semantic buttons, nested labels and adjacent composer toolbars. Ignore hidden labels and SVG titles; keep ambiguous controls paused before attachment.
+- Add isolated browser regressions for these three layouts. Live ChatGPT acceptance remains unverified.
+
 ### Windows 0.6.3 same-chat batch submission
 - Recognize numbered attachment display names such as `Part_001(3).mp4` and filenames split across nested elements. Keep filename counts distinct and reject missing or mismatched files.
 - Select and verify High thinking using supported semantic menu or slider controls before attachment; pause when the control is unknown or the setting changes during upload.
@@ -43,6 +47,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.4] - 2026-10-31 (preview)
+
+- Expand High-control detection to semantic buttons, nested visible labels and adjacent composer toolbars. Test these layouts with synthetic uploads; live site acceptance remains unverified.
 
 ## [0.6.3] - 2026-10-31 (preview)
 
