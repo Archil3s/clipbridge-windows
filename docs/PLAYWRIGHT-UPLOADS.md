@@ -55,3 +55,11 @@ Implementation references: [Playwright file uploads](https://playwright.dev/dotn
 Click **Copy debug report** while the run is stuck or paused, then paste the report into Codex. The button stays enabled during uploads. The report keeps only eight recent state changes in memory, rather than a growing transcript. It includes stage timing, queue totals, attachment-name recognition, upload activity, Send readiness, text matching, thinking effort, sent-message confirmation, response state and conversation-match counts. Repeated unchanged polling is counted rather than repeated in the report.
 
 The report excludes clip names and paths, video data, prompt/chat text, full URLs, raw exception messages, cookies, pairing keys and credentials. It is copied only when you click the button; nothing is sent automatically. Copying does not dismiss or overwrite the upload status. A clipboard-busy message lets you retry copying.
+
+## Working with Brave minimized
+
+The automation browser uses background-upload settings and CDP page-focus emulation while connected. You can minimize its window or work in other apps. Start does not bring the browser window to the front. Keep ClipBridge, that Brave window and the PC running; minimizing does not make uploads continue during sleep or after closing the browser. Reopen the separate automation browser after installing this update so its launch settings take effect.
+
+Diagnostics include focus and visible-page booleans, and distinguish the attachment-menu/file-picker phase from High selection. These page flags describe emulated page activity, not whether the Windows window is foregrounded.
+
+Implementation references: [Chromium tool-launch flags](https://github.com/GoogleChrome/chrome-launcher/blob/main/docs/chrome-flags-for-tools.md) and [CDP focus emulation](https://github.com/ChromeDevTools/devtools-protocol/blob/master/pdl/domains/Emulation.pdl). Live ChatGPT background uploads are not guaranteed by synthetic testing.

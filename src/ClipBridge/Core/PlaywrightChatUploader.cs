@@ -60,6 +60,7 @@ public sealed class PlaywrightChatUploader
                 IFileChooser? chooser = null;
                 if (ui.Input is null)
                 {
+                    DebugLog?.Stage(UploadDebugStage.FilePicker);
                     (ui, chooser) = await FindFileTargetAsync(ui, batch, ct);
                 }
                 bool multiple = chooser?.IsMultiple ?? ui.Multiple;
@@ -246,7 +247,8 @@ public sealed class PlaywrightChatUploader
         if (after is null || before != after) return new UiState();
         state.Conversation = after;
         DebugLog?.Observe(state.Found, state.Names, state.Pending, state.SendEnabled, state.TextMatches,
-            state.Thinking, state.Responding, state.Confirmed, state.Empty, state.Users, state.Assistants, _page.Url, _conversation);
+            state.Thinking, state.Responding, state.Confirmed, state.Empty, state.Users, state.Assistants, _page.Url, _conversation,
+            state.Focused, state.VisiblePage);
         if (!string.IsNullOrWhiteSpace(state.Error)) throw new InvalidOperationException(state.Error);
         return state;
     }
@@ -272,6 +274,8 @@ public sealed class PlaywrightChatUploader
 
     private sealed class UiState
     {
+        [JsonPropertyName("focused")] public bool Focused { get; set; }
+        [JsonPropertyName("visiblePage")] public bool VisiblePage { get; set; }
         public string Conversation { get; set; } = "";
         [JsonPropertyName("names")] public bool Names { get; set; }
         [JsonPropertyName("pending")] public bool Pending { get; set; }

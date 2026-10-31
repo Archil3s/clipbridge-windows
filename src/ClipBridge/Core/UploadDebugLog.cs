@@ -5,7 +5,7 @@ namespace ClipBridge.Core;
 internal enum UploadDebugStage
 {
     Idle, Starting, SignIn, Endpoint, Driver, Connect, SelectTab, BrowserReady,
-    Composer, High, Attach, UploadReady, Enter, Confirm, Response, Complete, Stopped, Error
+    Composer, High, FilePicker, Attach, UploadReady, Enter, Confirm, Response, Complete, Stopped, Error
 }
 
 internal sealed class UploadDebugLog
@@ -35,13 +35,13 @@ internal sealed class UploadDebugLog
 
     public void Observe(bool composer, bool names, bool pending, bool send, bool text,
         string thinking, bool responding, bool confirmed, bool empty, int users, int assistants,
-        string url, string target)
+        string url, string target, bool focused = false, bool visiblePage = false)
     {
         static int B(bool value) => value ? 1 : 0;
         string effort = thinking is "High" or "Medium" or "Low" ? thinking : "unknown";
         Record($"{_stage} box={B(composer)} names={B(names)} busy={B(pending)} send={B(send)} " +
             $"text={B(text)} high={effort} reply={B(responding)} sent={B(confirmed)} empty={B(empty)} " +
-            $"turns={users}/{assistants} url={Kind(url)} match={B(url.TrimEnd('/') == target.TrimEnd('/'))}");
+            $"turns={users}/{assistants} url={Kind(url)} match={B(url.TrimEnd('/') == target.TrimEnd('/'))} focus={B(focused)} visible={B(visiblePage)}");
     }
 
     internal static string Kind(string url) => Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
