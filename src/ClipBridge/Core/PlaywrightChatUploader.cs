@@ -101,14 +101,14 @@ public sealed class PlaywrightChatUploader
                 DebugLog?.Stage(UploadDebugStage.Confirm);
                 _report($"Batch {number}: waiting for the sent message to appear in chat.");
                 bool responseObserved = false;
-                await WaitAsync(batch, message, usersBefore, state =>
+                ui = await WaitAsync(batch, message, usersBefore, state =>
                 {
                     responseObserved |= state.Responding;
                     return state.Confirmed && state.Empty &&
-                        AutomaticUploadQueue.BrowserConversationUrl(_page.Url).StartsWith("https://chatgpt.com/c/", StringComparison.Ordinal);
+                        state.Conversation.StartsWith("https://chatgpt.com/c/", StringComparison.Ordinal);
                 },
                     TimeSpan.FromSeconds(45), ct, allowNewConversation: true);
-                _conversation = AutomaticUploadQueue.BrowserConversationUrl(_page.Url);
+                _conversation = ui.Conversation;
                 _queue.ConfirmSubmitted(batch, _conversation);
                 DebugLog?.Stage(UploadDebugStage.Response);
                 _report($"Batch {number} submitted. Waiting for ChatGPT to finish responding.");
@@ -203,29 +203,48 @@ public sealed class PlaywrightChatUploader
         finally { _page.FileChooser -= onChooser; }
     }
 
-    private void CheckContext(CancellationToken ct, bool allowNewConversation = false)
+    private string? CheckContext(CancellationToken ct, bool allowNewConversation = false)
     {
         ct.ThrowIfCancellationRequested();
         if (_page.IsClosed) throw new InvalidOperationException("The automation tab was closed.");
         if (_dialog) throw new InvalidOperationException("A browser dialog needs your attention. Resolve it and start again.");
-        string current = AutomaticUploadQueue.BrowserConversationUrl(_page.Url);
+        string current;
+        try { current = AutomaticUploadQueue.BrowserConversationUrl(_page.Url); }
+        catch (ArgumentException) when (allowNewConversation &&
+            Uri.TryCreate(_page.Url, UriKind.Absolute, out var uri) && uri.Scheme == "https" &&
+            uri.Host == "chatgpt.com" && uri.IsDefaultPort && uri.UserInfo.Length == 0)
+        {
+            DebugLog?.RoutingWait();
+            return null;
+        }
         if (current != _conversation && !(allowNewConversation && _conversation == "https://chatgpt.com" &&
                 current.StartsWith("https://chatgpt.com/c/", StringComparison.Ordinal)))
             throw new InvalidOperationException("The conversation changed. Automation stopped.");
+        return current;
     }
 
     private async Task<UiState> SnapshotAsync(IReadOnlyList<AutomaticClip> batch, string message, int usersBefore,
         CancellationToken ct, bool allowNewConversation = false)
     {
-        CheckContext(ct, allowNewConversation);
-        var state = await _page.EvaluateAsync<UiState>(Script, new
+        string? before = CheckContext(ct, allowNewConversation);
+        if (before is null) return new UiState();
+        UiState state;
+        try { state = await _page.EvaluateAsync<UiState>(Script, new
         {
             token = _token,
             message,
             usersBefore,
             items = batch.Select(clip => new { name = clip.Name }).ToArray()
-        }).WaitAsync(ct);
-        CheckContext(ct, allowNewConversation);
+        }).WaitAsync(ct); }
+        catch (PlaywrightException ex) when (allowNewConversation &&
+            ex.Message.Contains("Execution context was destroyed", StringComparison.Ordinal))
+        {
+            CheckContext(ct, allowNewConversation);
+            return new UiState();
+        }
+        string? after = CheckContext(ct, allowNewConversation);
+        if (after is null || before != after) return new UiState();
+        state.Conversation = after;
         DebugLog?.Observe(state.Found, state.Names, state.Pending, state.SendEnabled, state.TextMatches,
             state.Thinking, state.Responding, state.Confirmed, state.Empty, state.Users, state.Assistants, _page.Url, _conversation);
         if (!string.IsNullOrWhiteSpace(state.Error)) throw new InvalidOperationException(state.Error);
@@ -253,6 +272,7 @@ public sealed class PlaywrightChatUploader
 
     private sealed class UiState
     {
+        public string Conversation { get; set; } = "";
         [JsonPropertyName("names")] public bool Names { get; set; }
         [JsonPropertyName("pending")] public bool Pending { get; set; }
         [JsonPropertyName("sendEnabled")] public bool SendEnabled { get; set; }

@@ -63,6 +63,8 @@ internal sealed class UploadDebugLog
     public void Tabs(int total, int matching, int chats) =>
         Record($"SelectTab total={total} matching={matching} chatPages={chats}");
 
+    public void RoutingWait() => Record("Confirm waiting-for-stable-chat-address");
+
     public string Export(IEnumerable<AutomaticClip> clips, string target, bool running)
     {
         var states = clips.ToArray();

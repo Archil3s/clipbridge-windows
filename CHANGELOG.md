@@ -4,6 +4,11 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.8 stable post-send routing
+- During confirmation only, wait through unsupported same-origin routes and destroyed execution contexts until a supported stable chat address appears. Keep origin restrictions and the bounded confirmation timeout.
+- Bind submission to the canonical address captured with the confirmation snapshot instead of re-reading a moving browser URL in the predicate or after the wait.
+- Record address-settling waits without private URL values. Add a 38-file regression with a delayed unsupported route and missing author attributes, requiring thirteen batches in the same chat.
+
 ### Windows 0.6.7 post-send continuation
 - Match observed browser addresses by validated origin and conversation path, ignoring routing query/fragment values without persisting them. Keep configured URL validation strict.
 - Confirm a unique rendered full batch message outside the composer when author attributes are unavailable. Require the cleared composer and conversation address as before.
@@ -63,6 +68,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.8] - 2026-10-31 (preview)
+
+- Wait for a stable chat address after Enter and confirm against the captured snapshot. Test a full 38-file queue through the first-message route transition. Live continuation remains unverified.
 
 ## [0.6.7] - 2026-10-31 (preview)
 

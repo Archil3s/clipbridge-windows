@@ -1,5 +1,5 @@
 #define AppName "ClipBridge"
-#define AppVersion "0.6.7"
+#define AppVersion "0.6.8"
 #define AppPublisher "ClipBridge Project"
 #define AppExeName "ClipBridge.exe"
 
