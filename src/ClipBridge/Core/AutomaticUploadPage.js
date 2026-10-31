@@ -127,5 +127,15 @@ if (ui) {
   const menus = [...ui.root.querySelectorAll('button#composer-plus-btn, button[data-testid="composer-plus-btn"], button[aria-label="Add photos & files"], button[aria-label="Attach files"], button[aria-label="Add files and more"]')]
     .filter(button => button.getClientRects().length && !button.disabled);
   if (menus.length === 1) state.menu = tag(menus[0], 'menu');
+  if (!state.confirmed && args.message && state.empty) {
+    const normalized = value => value.replace(/\s+/g, ' ').trim();
+    const expected = normalized(args.message);
+    const rendered = [...document.querySelectorAll('main *, [role="main"] *')].filter(element =>
+      verificationVisible(element) && !attachmentRoot.contains(element) &&
+      !element.closest('aside, nav, [role="dialog"], [contenteditable], textarea, script, style, [hidden], [inert]') &&
+      typeof element.innerText === 'string' && normalized(element.innerText) === expected);
+    state.confirmed = rendered.filter(element => !rendered.some(other =>
+      other !== element && element.contains(other))).length === 1;
+  }
 }
 return state;

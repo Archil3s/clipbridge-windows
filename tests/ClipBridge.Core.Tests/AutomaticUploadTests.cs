@@ -56,6 +56,9 @@ internal static class AutomaticUploadTests
                 try { AutomaticUploadQueue.ValidateUrl(bad); } catch (ArgumentException) { rejected = true; }
                 Check(rejected, "reject unsupported automation destination " + bad);
             }
+            Check(AutomaticUploadQueue.BrowserMatches("https://chatgpt.com/c/synthetic?model=test#x", "https://chatgpt.com/c/synthetic"), "browser routing parameters match the canonical conversation without being saved");
+            Check(!AutomaticUploadQueue.BrowserMatches("https://chatgpt.com.evil.example/c/synthetic?x=1", "https://chatgpt.com/c/synthetic") &&
+                !AutomaticUploadQueue.BrowserMatches("http://chatgpt.com/c/synthetic?x=1", "https://chatgpt.com/c/synthetic"), "browser URL normalization preserves destination restrictions");
             string changed = files[3];
             await File.AppendAllTextAsync(changed, "changed");
             bool changedRejected = false;
@@ -108,7 +111,7 @@ internal static class AutomaticUploadTests
         foreach (string mode in new[] { "auto", "menu", "semantic", "new-chat", "pending", "disabled", "partial", "error", "draft", "edit", "cancel", "navigation", "uncertain-send",
             "challenge-title", "challenge-form", "challenge-upload", "hidden-challenge",
             "renamed", "same-chat", "high-slider", "wrong-name", "enter-no-send", "high-missing", "high-changed",
-            "duplicate-names", "duplicate-name-missing", "next-chat", "high-semantic", "high-nested", "high-adjacent", "chips-adjacent", "chips-icon", "chips-adjacent-pending", "chips-history" })
+            "duplicate-names", "duplicate-name-missing", "next-chat", "high-semantic", "high-nested", "high-adjacent", "chips-adjacent", "chips-icon", "chips-adjacent-pending", "chips-history", "routing-query", "unmarked-turns" })
             await BrowserCaseAsync(browser, root, files, mode);
         await CdpCaseAsync(playwright, root, files);
         Console.WriteLine("Synthetic clips/pages only; normal Brave sign-in and live ChatGPT acceptance remain unverified.");
@@ -180,7 +183,7 @@ internal static class AutomaticUploadTests
         await using var context = await browser.NewContextAsync();
         var page = await context.NewPageAsync();
         await page.RouteAsync("https://chatgpt.com/**", route => route.FulfillAsync(new() { ContentType = "text/html", Body = Fixture(mode) }));
-        string url = mode is "new-chat" or "same-chat" ? "https://chatgpt.com/" : "https://chatgpt.com/c/synthetic-reels";
+        string url = mode is "new-chat" or "same-chat" or "routing-query" or "unmarked-turns" ? "https://chatgpt.com/" : "https://chatgpt.com/c/synthetic-reels";
         await page.GotoAsync(url);
         if (mode is "duplicate-names" or "duplicate-name-missing")
         {
@@ -222,7 +225,7 @@ internal static class AutomaticUploadTests
         int sends = await page.EvaluateAsync<int>("window.sends.length");
         if (mode == "pending") Check(debug.Export(queue.Clips, page.Url, false).Contains("busy=1"),
             "debug report captures the real upload-processing wait without page text");
-        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp" or "hidden-challenge" or "renamed" or "same-chat" or "high-slider" or "duplicate-names" or "high-semantic" or "high-nested" or "high-adjacent" or "chips-adjacent" or "chips-icon")
+        if (mode is "auto" or "menu" or "semantic" or "new-chat" or "cdp" or "hidden-challenge" or "renamed" or "same-chat" or "high-slider" or "duplicate-names" or "high-semantic" or "high-nested" or "high-adjacent" or "chips-adjacent" or "chips-icon" or "routing-query" or "unmarked-turns")
         {
             if (stopped is not null) throw new Exception(mode + " unexpectedly stopped", stopped);
             Check(sends == (mode == "same-chat" ? 3 : mode == "duplicate-names" ? 1 : 2) && queue.Clips.All(clip => clip.State == "Submitted"), mode + ": automatically submits every queued clip");
@@ -368,13 +371,13 @@ internal static class AutomaticUploadTests
           if(chips.querySelector('[role="progressbar"]'))window.premature=true;
           window.sends.push({names:window.currentFiles.map(file=>file.name),message:editor.innerText,thinking:thinking.innerText.trim(),url:location.href});
           if(mode==='uncertain-send')return;
-          const turn=document.createElement(mode==='same-chat'?'article':'div');turn.setAttribute(mode==='same-chat'?'data-turn':'data-message-author-role','user');turn.textContent=editor.innerText;document.querySelector('#turns').append(turn);
+          const turn=document.createElement(mode==='same-chat'?'article':'div');turn.setAttribute(mode==='same-chat'?'data-turn':'data-message-author-role','user');if(mode==='unmarked-turns')turn.removeAttribute('data-message-author-role');turn.textContent=editor.innerText;document.querySelector('#turns').append(turn);
           chips.replaceChildren();document.querySelectorAll('input').forEach(input=>input.value='');editor.textContent='';send.disabled=true;
-          if((mode==='new-chat'||mode==='same-chat')&&window.sends.length===1)history.pushState({},'', '/c/generated');
+          if((mode==='new-chat'||mode==='same-chat'||mode==='routing-query'||mode==='unmarked-turns')&&window.sends.length===1)history.pushState({},'', mode==='routing-query'?'/c/generated?model=synthetic#details':'/c/generated');
           if(mode==='next-chat')setTimeout(()=>history.pushState({},'', '/c/wrong-conversation'),1200);
           const stop=document.createElement('button');stop.dataset.testid='stop-button';stop.textContent='Stop';document.body.append(stop);
           if(mode==='semantic'){stop.removeAttribute('data-testid');stop.setAttribute('aria-label','Stop');}
-          setTimeout(()=>{const reply=document.createElement(mode==='same-chat'?'article':'div');reply.setAttribute(mode==='same-chat'?'data-turn':'data-message-author-role','assistant');reply.textContent='Received';document.querySelector('#turns').append(reply);if(mode!=='semantic')stop.remove();},300);
+          setTimeout(()=>{const reply=document.createElement(mode==='same-chat'?'article':'div');reply.setAttribute(mode==='same-chat'?'data-turn':'data-message-author-role','assistant');if(mode==='unmarked-turns')reply.removeAttribute('data-message-author-role');reply.textContent='Received';document.querySelector('#turns').append(reply);if(mode!=='semantic')stop.remove();},300);
           if(mode==='semantic')setTimeout(()=>stop.remove(),2200);
         };
         </script></body></html>
