@@ -15,10 +15,15 @@ public partial class AutomaticUploadWindow : Window
     private bool _closing;
     private readonly UploadDebugLog _debug = new();
 
-    public AutomaticUploadWindow(IEnumerable<string> prepared)
+    public AutomaticUploadWindow(IEnumerable<string> prepared) : this(prepared,
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "ClipBridge")) { }
+
+    internal AutomaticUploadWindow(IEnumerable<string> prepared, string folder)
     {
         InitializeComponent();
         _session.DebugLog = _debug;
+        _session.ConnectionStatus = message => UploadStatus.Text = message;
+        FolderPathBox.Text = folder;
         _queue = new AutomaticUploadQueue();
         try
         {
@@ -43,25 +48,29 @@ public partial class AutomaticUploadWindow : Window
     {
         try
         {
-            int count = _queue.Add(paths);
+            string[] files = paths.ToArray();
+            int count = _queue.Add(files);
             RefreshQueue();
-            UploadStatus.Text = $"Added {count} clips to the saved automatic upload queue. No processing required.";
+            ImportStatus.Text = files.Length == 0 ? "No MP4, MOV, M4V or WebM clips found directly in this folder. Choose the folder containing the video files." :
+                $"Found {files.Length} clip(s): {count} added, {files.Length - count} already queued. No processing required.";
+            UploadStatus.Text = ImportStatus.Text;
         }
-        catch (Exception ex) { UploadStatus.Text = ex.Message; }
+        catch (Exception ex) { ImportStatus.Text = UploadStatus.Text = ex.Message; }
+    }
+
+    private void LoadFolder_Click(object sender, RoutedEventArgs e)
+    {
+        try { AddPaths(PreparedClipFolder.Read(FolderPathBox.Text.Trim())); }
+        catch (Exception ex) { ImportStatus.Text = UploadStatus.Text = ex.Message; }
     }
 
     private void Folder_Click(object sender, RoutedEventArgs e)
     {
-        var picker = new OpenFolderDialog { Title = "Choose a folder containing prepared clips" };
+        var picker = new OpenFolderDialog { Title = "Choose the clip folder, then click Select Folder" };
+        if (Directory.Exists(FolderPathBox.Text)) picker.InitialDirectory = FolderPathBox.Text;
         if (picker.ShowDialog(this) != true) return;
-        try
-        {
-            string[] extensions = [".mp4", ".mov", ".m4v", ".webm"];
-            AddPaths(Directory.EnumerateFiles(picker.FolderName).Where(path =>
-                extensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
-                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase));
-        }
-        catch (Exception ex) { UploadStatus.Text = ex.Message; }
+        FolderPathBox.Text = picker.FolderName;
+        LoadFolder_Click(sender, e);
     }
 
     private void Add_Click(object sender, RoutedEventArgs e)
@@ -72,6 +81,7 @@ public partial class AutomaticUploadWindow : Window
             Multiselect = true,
             Filter = "Prepared video clips|*.mp4;*.mov;*.m4v;*.webm"
         };
+        if (Directory.Exists(FolderPathBox.Text)) picker.InitialDirectory = FolderPathBox.Text;
         if (picker.ShowDialog(this) == true) AddPaths(picker.FileNames);
     }
 

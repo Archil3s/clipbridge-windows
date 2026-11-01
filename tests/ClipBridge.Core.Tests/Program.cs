@@ -64,6 +64,7 @@ try
     Check(BRollCutter.SanitizeLabel("../CON") == "__CON", "category cannot escape library directory");
 
     await SharedSplitOutputTests.RunAsync(root);
+    await UploadEntryTests.RunAsync(root);
     if (args.Contains("--video"))
     {
         string ffmpeg = Path.Combine(DependencyInstaller.ToolsDirectory, "ffmpeg.exe");

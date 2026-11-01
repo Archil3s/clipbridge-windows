@@ -16,6 +16,7 @@ public sealed class BraveAutomationSession : IDisposable
     private ICDPSession? _focusSession;
     public IPage? Page { get; private set; }
     internal UploadDebugLog? DebugLog { get; set; }
+    internal Action<string>? ConnectionStatus { get; set; }
 
     public BraveAutomationSession() : this(Path.Combine(AutomaticUploadQueue.Folder, "PlaywrightBraveProfile")) { }
 
@@ -65,11 +66,17 @@ public sealed class BraveAutomationSession : IDisposable
             Directory.CreateDirectory(_profile);
             ct.ThrowIfCancellationRequested();
             using var process = _start(CreateStartInfo(url, automation: true)) ?? throw new IOException("Could not start Brave.");
+            var launchTime = Stopwatch.StartNew();
             var deadline = DateTime.UtcNow.AddSeconds(30);
             while (endpoint is null && DateTime.UtcNow < deadline)
             {
                 await Task.Delay(500, ct);
                 endpoint = await FindEndpointAsync(ct);
+                DebugLog?.Endpoint(process.HasExited, endpoint is not null);
+                if (endpoint is null && process.HasExited && launchTime.Elapsed >= TimeSpan.FromSeconds(3))
+                    throw new IOException("Brave's launch process exited before the automation connection opened. Close every window of the separate ClipBridge sign-in browser, then click Start automatic uploads + Send. Your usual Brave windows can stay open; your login is saved.");
+                if (endpoint is null && launchTime.Elapsed >= TimeSpan.FromSeconds(3))
+                    ConnectionStatus?.Invoke("Waiting for Brave's automation connection. If the separate ClipBridge sign-in browser is still open, close all of its windows. Then stop this attempt and click Start automatic uploads + Send. Your login is saved.");
             }
         }
         if (endpoint is null) throw new IOException("Close all ClipBridge sign-in Brave windows, then click Start again. Your usual Brave windows can stay open.");

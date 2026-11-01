@@ -373,7 +373,7 @@ public partial class MainWindow : Window
             _braveUploadBridge = null;
             AutoAttachEnabledBox.IsChecked = false;
             if (bridge is not null) await bridge.DisposeAsync();
-            _automaticUploadWindow = new AutomaticUploadWindow(_uploadQueue) { Owner = this };
+            _automaticUploadWindow = new AutomaticUploadWindow(_uploadQueue, OutputFolderBox.Text) { Owner = this };
             AutoAttachEnabledBox.IsEnabled = false;
             _automaticUploadWindow.Closed += (_, _) =>
             {

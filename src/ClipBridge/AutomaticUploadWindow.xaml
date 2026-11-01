@@ -4,18 +4,27 @@
         Title="ClipBridge - Automatic ChatGPT uploads" Width="940" Height="780"
         MinWidth="760" MinHeight="620" Background="{StaticResource WindowBackground}"
         Foreground="White" FontFamily="Segoe UI" FontSize="14" Closing="Window_Closing">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="24">
+    <Grid Margin="24">
+        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,0,12">
             <TextBlock Text="Automatic ChatGPT uploads" FontSize="26" FontWeight="Bold" />
             <TextBlock Text="Uses High thinking, waits for every attachment, then presses Enter once. Each confirmed batch continues in the same chat until no ready clips remain."
                        Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,8,0,18" />
             <StackPanel x:Name="SettingsPanel">
+                <Label Content="Clip folder" Target="{Binding ElementName=FolderPathBox}" Foreground="White" />
+                <DockPanel Margin="0,0,0,6">
+                    <Button Content="Load folder" Click="LoadFolder_Click" DockPanel.Dock="Right" />
+                    <TextBox x:Name="FolderPathBox" AutomationProperties.Name="Prepared clip folder path" VerticalContentAlignment="Center" />
+                </DockPanel>
                 <WrapPanel Margin="0,0,0,12">
                     <Button Content="Choose clip folder" Click="Folder_Click" />
                     <Button Content="Add clips" Click="Add_Click" />
                     <Button Content="Remove selected" Click="Remove_Click" />
                     <Button Content="Retry reviewed clips" Click="Retry_Click" />
                 </WrapPanel>
+                <TextBlock x:Name="ImportStatus" Text="Paste a folder path and click Load folder, or choose files with Add clips. The folder picker displays folders only."
+                           Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,0,0,10" AutomationProperties.LiveSetting="Polite" />
                 <ListBox x:Name="ClipsList" Height="185" SelectionMode="Extended"
                          Background="{StaticResource InputBackground}" Foreground="White"
                          BorderBrush="{StaticResource ControlEdge}" Padding="8" AutomationProperties.Name="Saved automatic upload queue">
@@ -52,6 +61,9 @@
                 <TextBlock Text="Sign in in the separate Brave window, then close that window before clicking Start. Sign-in runs without debugging or Playwright. Start reopens the saved profile for uploads. Your usual Brave windows can stay open."
                            Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" FontSize="13" Margin="0,10,0,12" />
             </StackPanel>
+        </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Row="1">
             <WrapPanel Margin="0,4,0,12">
                 <Button x:Name="OpenButton" Content="Open browser / sign in" Click="Open_Click" />
                 <Button x:Name="StartUploadButton" Content="Start automatic uploads + Send" Click="Start_Click" Background="{StaticResource PrimaryAccent}" />
@@ -61,8 +73,8 @@
             <TextBlock x:Name="DebugCopyStatus" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
             <TextBlock x:Name="UploadStatus" Text="Ready. Choose a folder of prepared clips. Your queue and settings are saved on this PC."
                        Style="{StaticResource StatusText}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-            <TextBlock Text="Starting authorizes automatic uploads and messages in the conversation above. Stop prevents further actions; an upload or message already submitted cannot be recalled. Uncertain attempts stay paused for review."
+            <TextBlock x:Name="UploadConsent" Text="Starting authorizes automatic uploads and messages in the conversation above. Stop prevents further actions; an upload or message already submitted cannot be recalled. Uncertain attempts stay paused for review."
                        Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" FontSize="12" Margin="0,12,0,0" />
         </StackPanel>
-    </ScrollViewer>
+    </Grid>
 </Window>
