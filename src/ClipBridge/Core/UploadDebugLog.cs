@@ -63,6 +63,9 @@ internal sealed class UploadDebugLog
     public void Tabs(int total, int matching, int chats) =>
         Record($"SelectTab total={total} matching={matching} chatPages={chats}");
 
+    public void Endpoint(bool launchExited, bool connected) =>
+        Record($"Endpoint launchExited={(launchExited ? 1 : 0)} connected={(connected ? 1 : 0)}");
+
     public void RoutingWait() => Record("Confirm waiting-for-stable-chat-address");
 
     public string Export(IEnumerable<AutomaticClip> clips, string target, bool running)

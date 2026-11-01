@@ -1,11 +1,11 @@
-# Automatic uploads with Playwright (Windows 0.6.3)
+# Automatic uploads with Playwright (Windows 0.6.13)
 
 This workflow uploads prepared clips and sends each batch automatically after you start it. It does not require the Brave extension or its local file-transfer bridge. Playwright supplies the local file paths directly to the browser file input, avoiding the extension's base64 chunk transfers.
 
 ## Start
 
-1. Close ClipBridge and its separate automation Brave windows, install Windows 0.6.3, then open **Automatic uploads (Playwright)**. Your normal Brave windows can stay open. This version includes the separate manual sign-in flow from 0.6.2.
-2. Choose **Choose clip folder** and select the folder containing your finished MP4/MOV/M4V/WebM clips. The saved queue is separate from source videos waiting to be split. Clips already prepared by the current ClipBridge job are imported when this window opens.
+1. Close ClipBridge and its separate automation Brave windows, install Windows 0.6.13, then open **Automatic uploads (Playwright)**. Your normal Brave windows can stay open.
+2. Check the **Clip folder** path, initially the main window's Output folder, and click **Load folder** to add its finished MP4/MOV/M4V/WebM clips directly. Alternatively use **Choose clip folder** or **Add clips**. The folder picker displays folders only: choose the directory and click Select Folder. The import result above the queue shows discovered, added and duplicate counts or an error. Only files directly in the selected folder are imported. The saved queue is separate from source videos waiting to be split. Clips already prepared by the current ClipBridge job are imported when this window opens.
 3. Leave the conversation link at `https://chatgpt.com/` for a new chat, or paste an existing `https://chatgpt.com/c/...` conversation link.
 4. Choose clips per message and the message to send with each batch. Start with 3. The maximum 10 is a local setting, not a detected account limit; the batch also has a 1 GB cap. Large clips can reduce the count.
 5. Click **Open browser / sign in**. Sign in and complete any verification yourself. This launch has no debugging flags and no Playwright connection. If an earlier automation Brave window is open, close that separate window first. Your usual Brave login is not copied.
@@ -39,6 +39,10 @@ Limits, visible errors, edited drafts, changed conversations, unsupported page l
 The old extension remains available as an alternative. Opening the Playwright uploader disables ClipBridge's extension bridge to avoid running both delivery methods at once. Previous extension reservations are not imported into this separate queue: choose only clips you intend to submit to this conversation.
 
 ## Browser and installation details
+
+If the debug report stops at **Endpoint**, no browser attachment has started. A separate sign-in window left open does not gain automation merely because Start launches Brave again: the existing browser may receive the launch and continue without a debugging endpoint. Close every window of that separate ClipBridge profile, then click Start. The saved login remains. Version 0.6.13 reports an exited launch earlier, includes `launchExited` and `connected` booleans in diagnostics, and keeps the recovery message and Start/Stop buttons visible while settings scroll.
+
+Human-verification screens still require manual action. A repeating Cloudflare challenge is not proof of a file or queue problem. Leave automation stopped if verification keeps repeating; this release does not bypass or guarantee acceptance of that check.
 
 The installer bundles the Microsoft.Playwright .NET driver. It uses your installed Brave executable with a dedicated `%LOCALAPPDATA%\ClipBridge\PlaywrightBraveProfile` directory and an automatically selected loopback debugging port. It connects through CDP. The production launch does not add `--no-sandbox`, stealth scripts, anti-detection flags or automatic login steps. The debugging endpoint is local to this PC; the profile and its browser-owned sign-in data stay local. Close the automation Brave window when finished.
 

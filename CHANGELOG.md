@@ -4,6 +4,12 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 
 ## [Unreleased]
 
+### Windows 0.6.13 upload entry and connection feedback
+- Add a direct clip-folder path and Load folder action seeded from the main output folder. Show discovered, added and duplicate counts near the queue, including explicit empty-folder and import errors.
+- Keep connection/upload status and Start/Stop actions outside the settings scroll area so errors remain visible in a small window.
+- Detect a browser launch process exiting without an automation endpoint before the full timeout. Explain the separate sign-in window handoff and add path-free launch/connection diagnostics.
+- Test 208-file folder loading, durable state preservation, exited launches and minimum-height WPF status/action visibility.
+
 ### Windows 0.6.12 shared split output
 - Save all final split clips directly in the selected Output folder with unique part numbers, keeping existing files and source videos.
 - Recover each source from its own manifest in the shared folder; copy valid legacy outputs into that folder without deleting previous outputs.
@@ -91,6 +97,10 @@ All notable ClipBridge changes are recorded here. This project follows [Keep a C
 - Pause on limits, errors, missing readiness, draft edits, hidden tabs, changed conversations and uncertain sends. Preserve durable no-replay reservations and manual fallback.
 - Default new Windows jobs to 100 MB targets and smaller-file CRF 32 compression; keep all existing outputs and B-roll functionality.
 - Add batch protocol/atomic-reservation tests and nine sandboxed Chromium scenarios covering manual mode, multi-batch auto-send, pending uploads, disabled Send, missing files, errors, edits, navigation and existing drafts.
+
+## [0.6.13] - 2026-11-01 (preview)
+
+- Add direct folder loading, visible import results and fixed upload status/actions. Report browser handoff failures earlier without changing sign-in or verification requirements.
 
 ## [0.6.12] - 2026-11-01 (preview)
 

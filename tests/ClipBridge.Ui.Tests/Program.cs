@@ -109,6 +109,26 @@ internal static class ThemeTests
                     scroll.ScrollToEnd(); Pump();
                     Save(scroll, Path.Combine(output, screen + (disabled ? "-disabled-bottom" : "-ready-bottom") + ".png"));
                 }
+                if (screen == "AutomaticUploadWindow")
+                {
+                    window.Height = window.MinHeight;
+                    ((TextBlock)window.FindName("UploadStatus")).Text = "Paused: SYNTHETIC PREVIEW. Close every window of the separate ClipBridge sign-in browser, then click Start automatic uploads + Send. Your usual Brave windows can stay open; your login is saved.";
+                    Pump();
+                    var content = (FrameworkElement)window.Content;
+                    foreach (string name in new[] { "UploadStatus", "OpenButton", "StartUploadButton", "StopButton", "UploadConsent" })
+                    {
+                        var control = (FrameworkElement)window.FindName(name);
+                        Point position = control.TranslatePoint(new Point(), content);
+                        Check(control.ActualHeight > 0 && position.Y >= 0 && position.Y + control.ActualHeight <= content.ActualHeight,
+                            "upload status/action visible at minimum height: " + name + ", disabled=" + disabled);
+                    }
+                    var formScroll = Descendants<ScrollViewer>(content).First();
+                    formScroll.ScrollToEnd(); Pump();
+                    var status = (FrameworkElement)window.FindName("UploadStatus");
+                    Check(status.TranslatePoint(new Point(), content).Y + status.ActualHeight <= content.ActualHeight,
+                        "upload status stays visible while settings scroll, disabled=" + disabled);
+                    Save(content, Path.Combine(output, "AutomaticUploadWindow-minimum" + (disabled ? "-disabled" : "-ready") + ".png"));
+                }
                 window.Close();
             }
         }
